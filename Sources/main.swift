@@ -20,6 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkey = HotkeyManager()
     private lazy var resultWindow = ResultWindowController()
     private lazy var historyWindow = HistoryWindowController()
+    private lazy var settingsWindow: SettingsWindowController = {
+        let w = SettingsWindowController()
+        w.onHotkeySettingsChanged = { [weak self] in self?.applyHotkeySettings() }
+        return w
+    }()
 
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
@@ -30,18 +35,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = buildMenu()
         updateIcon()
 
-        // PTT-хоткей (удержание правого Option). Требует Accessibility.
+        // Хоткей. Требует Accessibility для глобального перехвата.
         HotkeyManager.ensureAccessibility(prompt: true)
-        hotkey.onStart = { [weak self] in self?.startDictation() }
-        hotkey.onStop  = { [weak self] in self?.stopDictation() }
+        hotkey.onStart  = { [weak self] in self?.startDictation() }
+        hotkey.onStop   = { [weak self] in self?.stopDictation() }
+        hotkey.onToggle = { [weak self] in self?.toggleDictation() }
+        applyHotkeySettings()
         hotkey.start()
+
+        // Онбординг: если ключа нет — сразу открыть Settings.
+        if currentAPIKey() == nil {
+            settingsWindow.showAndFocusKey()
+        }
+    }
+
+    private func applyHotkeySettings() {
+        hotkey.pttKeyCode = UInt16(Prefs.pttKeyCode)
+        hotkey.mode = (Prefs.dictationMode == "toggle") ? .toggle : .ptt
     }
 
     // MARK: - Меню
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        addItem(to: menu, title: "Dictate (hold Right ⌥)", action: #selector(toggleDictation), key: "")
+        addItem(to: menu, title: "Dictate", action: #selector(toggleDictation), key: "")
         menu.addItem(.separator())
         addItem(to: menu, title: "History…", action: #selector(showHistory), key: "")
         addItem(to: menu, title: "Settings…", action: #selector(showSettings), key: ",")
@@ -142,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Прочие пункты меню (заглушки до следующих этапов)
 
     @objc private func showHistory()  { historyWindow.reloadAndShow() }
-    @objc private func showSettings() { stub("Settings") }
+    @objc private func showSettings() { settingsWindow.show() }
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
@@ -150,14 +167,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.messageText = "Voica \(appVersion)"
         alert.informativeText = "Диктовка с пунктуацией через Groq Whisper."
         alert.runModal()
-    }
-
-    private func stub(_ name: String) {
-        NSApp.activate(ignoringOtherApps: true)
-        let a = NSAlert()
-        a.messageText = name
-        a.informativeText = "Скоро."
-        a.runModal()
     }
 
     private func alert(_ title: String, _ message: String) {

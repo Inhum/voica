@@ -76,6 +76,23 @@ enum GroqClient {
         }.resume()
     }
 
+    /// Проверка ключа через лёгкий GET /models. completion(nil) — ключ рабочий,
+    /// иначе строка с описанием проблемы.
+    static func validateKey(_ key: String, completion: @escaping (String?) -> Void) {
+        var req = URLRequest(url: URL(string: "https://api.groq.com/openai/v1/models")!)
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 20
+        URLSession.shared.dataTask(with: req) { _, resp, err in
+            if let err = err { return completion(err.localizedDescription) }
+            guard let http = resp as? HTTPURLResponse else { return completion("нет ответа") }
+            switch http.statusCode {
+            case 200:  completion(nil)
+            case 401:  completion("ключ отклонён (401)")
+            default:   completion("HTTP \(http.statusCode)")
+            }
+        }.resume()
+    }
+
     private static func body(boundary: String, audio: Data, filename: String) -> Data {
         var body = Data()
         func append(_ s: String) { body.append(s.data(using: .utf8)!) }

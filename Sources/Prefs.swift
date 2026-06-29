@@ -35,4 +35,10 @@ enum Prefs {
         get { d.string(forKey: Key.dictationMode) ?? "ptt" }
         set { d.set(newValue, forKey: Key.dictationMode) }
     }
+
+    /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
+    static func reset() {
+        [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode]
+            .forEach { d.removeObject(forKey: $0) }
+    }
 }

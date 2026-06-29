@@ -11,11 +11,16 @@ import Cocoa
 import ApplicationServices
 
 final class HotkeyManager {
-    var onStart: (() -> Void)?
-    var onStop: (() -> Void)?
+    enum Mode { case ptt, toggle }
 
-    /// keyCode модификатора для PTT (по умолчанию правый Option = 61).
+    var onStart:  (() -> Void)?   // PTT: нажали
+    var onStop:   (() -> Void)?   // PTT: отпустили
+    var onToggle: (() -> Void)?   // Toggle: одно нажатие переключает запись
+
+    /// keyCode модификатора (по умолчанию правый Option = 61).
     var pttKeyCode: UInt16 = 61
+    /// Режим запуска диктовки.
+    var mode: Mode = .ptt
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
@@ -41,12 +46,23 @@ final class HotkeyManager {
     private func handle(_ event: NSEvent) {
         guard event.keyCode == pttKeyCode else { return }
         let pressed = event.modifierFlags.contains(Self.flag(for: pttKeyCode))
-        if pressed && !isDown {
-            isDown = true
-            onStart?()
-        } else if !pressed && isDown {
-            isDown = false
-            onStop?()
+        switch mode {
+        case .ptt:
+            if pressed && !isDown {
+                isDown = true
+                onStart?()
+            } else if !pressed && isDown {
+                isDown = false
+                onStop?()
+            }
+        case .toggle:
+            // Реагируем на нажатие, отпускание игнорируем.
+            if pressed && !isDown {
+                isDown = true
+                onToggle?()
+            } else if !pressed {
+                isDown = false
+            }
         }
     }
 
