@@ -19,10 +19,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let recorder = Recorder()
     private let hotkey = HotkeyManager()
     private lazy var resultWindow = ResultWindowController()
+    private lazy var historyWindow = HistoryWindowController()
 
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
         updateIcon()
@@ -115,15 +118,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.state = .idle
-                try? FileManager.default.removeItem(at: rec.url)  // этап 3: вместо удаления — в хранилище
                 switch result {
                 case .success(let t):
                     if t.text.isEmpty {
+                        try? FileManager.default.removeItem(at: rec.url)
                         self.alert("Пусто", "Whisper не распознал речь. Попробуйте ещё раз.")
                     } else {
+                        Store.shared.insert(text: t.text, language: t.language,
+                                            duration: t.duration ?? rec.duration,
+                                            model: GroqClient.model, audioTempURL: rec.url)
+                        try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
                         self.resultWindow.show(t)
+                        self.historyWindow.refreshIfVisible()
                     }
                 case .failure(let err):
+                    try? FileManager.default.removeItem(at: rec.url)
                     self.alert("Ошибка транскрибации", err.localizedDescription)
                 }
             }
@@ -132,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Прочие пункты меню (заглушки до следующих этапов)
 
-    @objc private func showHistory()  { stub("History") }
+    @objc private func showHistory()  { historyWindow.reloadAndShow() }
     @objc private func showSettings() { stub("Settings") }
 
     @objc private func showAbout() {
