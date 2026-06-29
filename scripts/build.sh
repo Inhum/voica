@@ -13,8 +13,8 @@ echo "→ Сборка $NAME ($CONFIG)…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-SWIFT_FLAGS=(-O)
-[ "$CONFIG" = "debug" ] && SWIFT_FLAGS=(-Onone -g)
+SWIFT_FLAGS=(-O -swift-version 5)
+[ "$CONFIG" = "debug" ] && SWIFT_FLAGS=(-Onone -g -swift-version 5)
 
 swiftc "${SWIFT_FLAGS[@]}" -o "$APP/Contents/MacOS/$NAME" Sources/*.swift
 
