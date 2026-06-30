@@ -8,7 +8,7 @@
 
 import Cocoa
 
-let appVersion = "0.1.0"
+let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
 
 enum DictationState {
     case idle, recording, transcribing
