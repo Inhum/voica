@@ -11,6 +11,10 @@ final class SettingsWindowController: NSWindowController {
     private var plainKeyField: NSTextField!
     private var showKeyToggle: NSButton!
     private var keyStatusLabel: NSTextField!
+    private var statusIcon: NSImageView!
+    private var statusSpinner: NSProgressIndicator!
+
+    private enum StatusKind { case neutral, success, error }
 
     private var modeControl: NSSegmentedControl!
     private var keyPopup: NSPopUpButton!
@@ -77,11 +81,24 @@ final class SettingsWindowController: NSWindowController {
 
         let saveBtn = NSButton(title: L("settings.key.save"), target: self, action: #selector(saveKey))
         let testBtn = NSButton(title: L("settings.key.test"), target: self, action: #selector(testKey))
+        statusSpinner = NSProgressIndicator()
+        statusSpinner.style = .spinning
+        statusSpinner.controlSize = .small
+        statusSpinner.isDisplayedWhenStopped = false
+        statusSpinner.translatesAutoresizingMaskIntoConstraints = false
+        statusSpinner.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        statusSpinner.heightAnchor.constraint(equalToConstant: 16).isActive = true
+
+        statusIcon = NSImageView()
+        statusIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        statusIcon.isHidden = true
+
         keyStatusLabel = NSTextField(labelWithString: "")
         keyStatusLabel.font = .systemFont(ofSize: 11)
         keyStatusLabel.textColor = .secondaryLabelColor
-        let keyBtnRow = NSStackView(views: [saveBtn, testBtn, keyStatusLabel])
-        keyBtnRow.spacing = 8
+
+        let keyBtnRow = NSStackView(views: [saveBtn, testBtn, statusSpinner, statusIcon, keyStatusLabel])
+        keyBtnRow.spacing = 6
         stack.addArrangedSubview(keyBtnRow)
 
         let hint = NSTextField(labelWithString: L("settings.key.hint"))
@@ -182,7 +199,7 @@ final class SettingsWindowController: NSWindowController {
         let key = KeyStore.load() ?? ""
         secureKeyField.stringValue = key
         plainKeyField.stringValue = key
-        keyStatusLabel.stringValue = key.isEmpty ? L("settings.key.status.none") : L("settings.key.status.saved")
+        setStatus(key.isEmpty ? L("settings.key.status.none") : L("settings.key.status.saved"), .neutral)
 
         modeControl.selectedSegment = (Prefs.dictationMode == "toggle") ? 1 : 0
         if let idx = modifierChoices.firstIndex(where: { $0.1 == Prefs.pttKeyCode }) {
@@ -195,6 +212,29 @@ final class SettingsWindowController: NSWindowController {
     private var keyFieldValue: String {
         (showKeyToggle.state == .on ? plainKeyField.stringValue : secureKeyField.stringValue)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func setStatus(_ text: String, _ kind: StatusKind = .neutral) {
+        statusSpinner.stopAnimation(nil)
+        keyStatusLabel.stringValue = text
+        switch kind {
+        case .neutral:
+            statusIcon.isHidden = true
+        case .success:
+            statusIcon.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
+            statusIcon.contentTintColor = .systemGreen
+            statusIcon.isHidden = false
+        case .error:
+            statusIcon.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
+            statusIcon.contentTintColor = .systemRed
+            statusIcon.isHidden = false
+        }
+    }
+
+    private func setChecking(_ text: String) {
+        statusIcon.isHidden = true
+        keyStatusLabel.stringValue = text
+        statusSpinner.startAnimation(nil)
     }
 
     // MARK: - Действия: ключ
@@ -214,28 +254,30 @@ final class SettingsWindowController: NSWindowController {
     @objc private func saveKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            keyStatusLabel.stringValue = L("settings.key.status.empty")
+            setStatus(L("settings.key.status.empty"), .error)
             return
         }
         if KeyStore.save(key) {
-            keyStatusLabel.stringValue = L("settings.key.status.savedNow")
+            setStatus(L("settings.key.status.savedNow"), .success)
         } else {
-            keyStatusLabel.stringValue = L("settings.key.status.saveFailed")
+            setStatus(L("settings.key.status.saveFailed"), .error)
         }
     }
 
     @objc private func testKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            keyStatusLabel.stringValue = L("settings.key.status.empty")
+            setStatus(L("settings.key.status.empty"), .error)
             return
         }
-        keyStatusLabel.stringValue = L("settings.key.status.checking")
+        setChecking(L("settings.key.status.checking"))
         GroqClient.validateKey(key) { [weak self] problem in
             DispatchQueue.main.async {
-                self?.keyStatusLabel.stringValue = (problem == nil)
-                    ? L("settings.key.status.valid")
-                    : L("settings.key.status.invalid", problem!)
+                if let problem {
+                    self?.setStatus(L("settings.key.status.invalid", problem), .error)
+                } else {
+                    self?.setStatus(L("settings.key.status.valid"), .success)
+                }
             }
         }
     }

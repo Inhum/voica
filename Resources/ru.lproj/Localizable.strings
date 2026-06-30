@@ -54,8 +54,8 @@
 "settings.key.status.empty" = "Поле пустое";
 "settings.key.status.saveFailed" = "Не удалось сохранить";
 "settings.key.status.checking" = "Проверяю…";
-"settings.key.status.valid" = "✓ Ключ рабочий";
-"settings.key.status.invalid" = "✗ %@";
+"settings.key.status.valid" = "Ключ рабочий";
+"settings.key.status.invalid" = "%@";
 "settings.key.hint" = "Ключ сохраняется кнопкой «Сохранить». Остальные настройки применяются сразу.";
 "settings.dictation.header" = "Диктовка";
 "settings.mode.label" = "Режим:";

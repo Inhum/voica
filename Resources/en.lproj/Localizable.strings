@@ -54,8 +54,8 @@
 "settings.key.status.empty" = "Field is empty";
 "settings.key.status.saveFailed" = "Couldn’t save";
 "settings.key.status.checking" = "Checking…";
-"settings.key.status.valid" = "✓ Key works";
-"settings.key.status.invalid" = "✗ %@";
+"settings.key.status.valid" = "Key works";
+"settings.key.status.invalid" = "%@";
 "settings.key.hint" = "The key is saved with the Save button. Other settings apply immediately.";
 "settings.dictation.header" = "Dictation";
 "settings.mode.label" = "Mode:";
