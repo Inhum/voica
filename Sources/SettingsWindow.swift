@@ -19,12 +19,12 @@ final class SettingsWindowController: NSWindowController {
 
     // (заголовок, keyCode)
     private let modifierChoices: [(String, Int)] = [
-        ("Правый ⌥ Option", 61),
-        ("Левый ⌥ Option", 58),
-        ("Правый ⌘ Command", 54),
-        ("Левый ⌘ Command", 55),
-        ("Правый ⌃ Control", 62),
-        ("fn / 🌐 Globe", 63),
+        (L("modifier.rightOption"), 61),
+        (L("modifier.leftOption"), 58),
+        (L("modifier.rightCommand"), 54),
+        (L("modifier.leftCommand"), 55),
+        (L("modifier.rightControl"), 62),
+        (L("modifier.function"), 63),
     ]
 
     convenience init() {
@@ -32,7 +32,7 @@ final class SettingsWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: 460, height: 440),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
-        window.title = "Voica — Настройки"
+        window.title = L("settings.title")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         self.init(window: window)
@@ -58,7 +58,7 @@ final class SettingsWindowController: NSWindowController {
         ])
 
         // — API-ключ —
-        stack.addArrangedSubview(header("Groq API-ключ"))
+        stack.addArrangedSubview(header(L("settings.key.header")))
 
         secureKeyField = NSSecureTextField()
         secureKeyField.placeholderString = "gsk_…"
@@ -69,14 +69,14 @@ final class SettingsWindowController: NSWindowController {
             f.translatesAutoresizingMaskIntoConstraints = false
             f.widthAnchor.constraint(equalToConstant: 300).isActive = true
         }
-        showKeyToggle = NSButton(checkboxWithTitle: "Показать", target: self, action: #selector(toggleShowKey))
+        showKeyToggle = NSButton(checkboxWithTitle: L("settings.key.show"), target: self, action: #selector(toggleShowKey))
 
         let keyRow = NSStackView(views: [secureKeyField, plainKeyField, showKeyToggle])
         keyRow.spacing = 8
         stack.addArrangedSubview(keyRow)
 
-        let saveBtn = NSButton(title: "Сохранить", target: self, action: #selector(saveKey))
-        let testBtn = NSButton(title: "Проверить", target: self, action: #selector(testKey))
+        let saveBtn = NSButton(title: L("settings.key.save"), target: self, action: #selector(saveKey))
+        let testBtn = NSButton(title: L("settings.key.test"), target: self, action: #selector(testKey))
         keyStatusLabel = NSTextField(labelWithString: "")
         keyStatusLabel.font = .systemFont(ofSize: 11)
         keyStatusLabel.textColor = .secondaryLabelColor
@@ -84,7 +84,7 @@ final class SettingsWindowController: NSWindowController {
         keyBtnRow.spacing = 8
         stack.addArrangedSubview(keyBtnRow)
 
-        let hint = NSTextField(labelWithString: "Ключ сохраняется кнопкой «Сохранить». Остальные настройки применяются сразу.")
+        let hint = NSTextField(labelWithString: L("settings.key.hint"))
         hint.font = .systemFont(ofSize: 10)
         hint.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(hint)
@@ -92,25 +92,25 @@ final class SettingsWindowController: NSWindowController {
         stack.addArrangedSubview(separator())
 
         // — Диктовка —
-        stack.addArrangedSubview(header("Диктовка"))
+        stack.addArrangedSubview(header(L("settings.dictation.header")))
 
-        modeControl = NSSegmentedControl(labels: ["PTT (удержание)", "Toggle (вкл/выкл)"],
+        modeControl = NSSegmentedControl(labels: [L("settings.mode.ptt"), L("settings.mode.toggle")],
                                          trackingMode: .selectOne, target: self,
                                          action: #selector(modeChanged))
-        stack.addArrangedSubview(labeledRow("Режим:", modeControl))
+        stack.addArrangedSubview(labeledRow(L("settings.mode.label"), modeControl))
 
         keyPopup = NSPopUpButton()
         keyPopup.addItems(withTitles: modifierChoices.map { $0.0 })
         keyPopup.target = self
         keyPopup.action = #selector(keyChoiceChanged)
-        stack.addArrangedSubview(labeledRow("Клавиша:", keyPopup))
+        stack.addArrangedSubview(labeledRow(L("settings.keyChoice.label"), keyPopup))
 
         stack.addArrangedSubview(separator())
 
         // — Аудио —
-        stack.addArrangedSubview(header("Аудио"))
+        stack.addArrangedSubview(header(L("settings.audio.header")))
 
-        storeAudioToggle = NSButton(checkboxWithTitle: "Хранить аудиозаписи",
+        storeAudioToggle = NSButton(checkboxWithTitle: L("settings.audio.store"),
                                     target: self, action: #selector(storeAudioChanged))
         stack.addArrangedSubview(storeAudioToggle)
 
@@ -119,8 +119,8 @@ final class SettingsWindowController: NSWindowController {
         retentionField.widthAnchor.constraint(equalToConstant: 60).isActive = true
         retentionField.target = self
         retentionField.action = #selector(retentionChanged)
-        let retLabel = NSTextField(labelWithString: "Удалять аудио старше")
-        let daysLabel = NSTextField(labelWithString: "дней (0 = хранить всегда)")
+        let retLabel = NSTextField(labelWithString: L("settings.audio.retentionPrefix"))
+        let daysLabel = NSTextField(labelWithString: L("settings.audio.retentionSuffix"))
         daysLabel.textColor = .secondaryLabelColor
         let retRow = NSStackView(views: [retLabel, retentionField, daysLabel])
         retRow.spacing = 6
@@ -129,8 +129,8 @@ final class SettingsWindowController: NSWindowController {
         stack.addArrangedSubview(separator())
 
         // — Данные —
-        stack.addArrangedSubview(header("Данные"))
-        let deleteBtn = NSButton(title: "Delete all data…", target: self, action: #selector(deleteAllData))
+        stack.addArrangedSubview(header(L("settings.data.header")))
+        let deleteBtn = NSButton(title: L("settings.data.deleteAll"), target: self, action: #selector(deleteAllData))
         deleteBtn.hasDestructiveAction = true
         stack.addArrangedSubview(deleteBtn)
     }
@@ -182,7 +182,7 @@ final class SettingsWindowController: NSWindowController {
         let key = KeyStore.load() ?? ""
         secureKeyField.stringValue = key
         plainKeyField.stringValue = key
-        keyStatusLabel.stringValue = key.isEmpty ? "Ключ не задан" : "Ключ сохранён"
+        keyStatusLabel.stringValue = key.isEmpty ? L("settings.key.status.none") : L("settings.key.status.saved")
 
         modeControl.selectedSegment = (Prefs.dictationMode == "toggle") ? 1 : 0
         if let idx = modifierChoices.firstIndex(where: { $0.1 == Prefs.pttKeyCode }) {
@@ -214,26 +214,28 @@ final class SettingsWindowController: NSWindowController {
     @objc private func saveKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            keyStatusLabel.stringValue = "Поле пустое"
+            keyStatusLabel.stringValue = L("settings.key.status.empty")
             return
         }
         if KeyStore.save(key) {
-            keyStatusLabel.stringValue = "Сохранено"
+            keyStatusLabel.stringValue = L("settings.key.status.savedNow")
         } else {
-            keyStatusLabel.stringValue = "Не удалось сохранить"
+            keyStatusLabel.stringValue = L("settings.key.status.saveFailed")
         }
     }
 
     @objc private func testKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            keyStatusLabel.stringValue = "Поле пустое"
+            keyStatusLabel.stringValue = L("settings.key.status.empty")
             return
         }
-        keyStatusLabel.stringValue = "Проверяю…"
+        keyStatusLabel.stringValue = L("settings.key.status.checking")
         GroqClient.validateKey(key) { [weak self] problem in
             DispatchQueue.main.async {
-                self?.keyStatusLabel.stringValue = (problem == nil) ? "✓ Ключ рабочий" : "✗ \(problem!)"
+                self?.keyStatusLabel.stringValue = (problem == nil)
+                    ? L("settings.key.status.valid")
+                    : L("settings.key.status.invalid", problem!)
             }
         }
     }
@@ -267,29 +269,20 @@ final class SettingsWindowController: NSWindowController {
 
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "Удалить все данные?"
-        alert.informativeText = """
-            Будут безвозвратно удалены:
-            • \(counts.records) транскрибаций
-            • \(counts.audioFiles) аудиофайлов
-            • API-ключ
-            • все настройки
-
-            Для подтверждения введите ниже:
-            \(phrase)
-            """
+        alert.messageText = L("deleteAll.title")
+        alert.informativeText = L("deleteAll.body", counts.records, counts.audioFiles, phrase)
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
         alert.accessoryView = field
-        alert.addButton(withTitle: "Удалить всё")
-        alert.addButton(withTitle: "Отмена")
+        alert.addButton(withTitle: L("deleteAll.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
         alert.buttons.first?.hasDestructiveAction = true
 
         guard alert.runModal() == .alertFirstButtonReturn else { return }
 
         guard field.stringValue.trimmingCharacters(in: .whitespaces) == phrase else {
             let mismatch = NSAlert()
-            mismatch.messageText = "Фраза не совпала"
-            mismatch.informativeText = "Удаление отменено. Ничего не тронуто."
+            mismatch.messageText = L("deleteAll.mismatch.title")
+            mismatch.informativeText = L("deleteAll.mismatch.msg")
             mismatch.runModal()
             return
         }
@@ -301,8 +294,8 @@ final class SettingsWindowController: NSWindowController {
         onHotkeySettingsChanged?()
 
         let done = NSAlert()
-        done.messageText = "Готово"
-        done.informativeText = "Все данные удалены."
+        done.messageText = L("deleteAll.done.title")
+        done.informativeText = L("deleteAll.done.msg")
         done.runModal()
     }
 }

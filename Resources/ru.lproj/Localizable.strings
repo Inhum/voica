@@ -1,0 +1,105 @@
+/* Меню (строка меню) */
+"menu.dictate" = "Диктовать";
+"menu.history" = "История…";
+"menu.settings" = "Настройки…";
+"menu.about" = "О программе Voica";
+"menu.quit" = "Завершить Voica";
+
+/* Меню «Правка» */
+"edit.undo" = "Отменить";
+"edit.redo" = "Повторить";
+"edit.cut" = "Вырезать";
+"edit.copy" = "Копировать";
+"edit.paste" = "Вставить";
+"edit.selectAll" = "Выбрать всё";
+
+/* Предупреждения */
+"alert.mic.title" = "Нет доступа к микрофону";
+"alert.mic.msg" = "Разрешите доступ в Системных настройках → Конфиденциальность и безопасность → Микрофон.";
+"alert.recstart.title" = "Не удалось начать запись";
+"alert.recstart.msg" = "Проверьте микрофон и попробуйте снова.";
+"alert.empty.title" = "Пусто";
+"alert.empty.msg" = "Whisper не распознал речь. Попробуйте ещё раз.";
+"alert.transcribe.title" = "Ошибка транскрибации";
+
+/* Окно результата */
+"result.copy" = "Копировать";
+"result.copied" = "Скопировано";
+"result.copiedToClipboard" = "Скопировано в буфер";
+"result.language" = "язык: %@";
+"common.seconds" = "%.0f с";
+
+/* Окно истории */
+"history.title" = "Voica — История";
+"history.empty" = "История пуста";
+"history.play" = "Воспроизвести";
+"history.stop" = "Стоп";
+"history.delete" = "Удалить";
+"history.deleteConfirm.title" = "Удалить запись?";
+"history.deleteConfirm.msg" = "Запись и её аудио будут удалены без возможности восстановления.";
+
+/* Общее */
+"common.delete" = "Удалить";
+"common.cancel" = "Отмена";
+
+/* Настройки */
+"settings.title" = "Voica — Настройки";
+"settings.key.header" = "Ключ Groq API";
+"settings.key.show" = "Показать";
+"settings.key.save" = "Сохранить";
+"settings.key.test" = "Проверить";
+"settings.key.status.none" = "Ключ не задан";
+"settings.key.status.saved" = "Ключ сохранён";
+"settings.key.status.savedNow" = "Сохранено";
+"settings.key.status.empty" = "Поле пустое";
+"settings.key.status.saveFailed" = "Не удалось сохранить";
+"settings.key.status.checking" = "Проверяю…";
+"settings.key.status.valid" = "✓ Ключ рабочий";
+"settings.key.status.invalid" = "✗ %@";
+"settings.key.hint" = "Ключ сохраняется кнопкой «Сохранить». Остальные настройки применяются сразу.";
+"settings.dictation.header" = "Диктовка";
+"settings.mode.label" = "Режим:";
+"settings.mode.ptt" = "Удержание";
+"settings.mode.toggle" = "Переключение";
+"settings.keyChoice.label" = "Клавиша:";
+"settings.audio.header" = "Аудио";
+"settings.audio.store" = "Хранить аудиозаписи";
+"settings.audio.retentionPrefix" = "Удалять аудио старше";
+"settings.audio.retentionSuffix" = "дней (0 = хранить всегда)";
+"settings.data.header" = "Данные";
+"settings.data.deleteAll" = "Удалить все данные…";
+
+/* Клавиши-модификаторы */
+"modifier.rightOption" = "Правый ⌥ Option";
+"modifier.leftOption" = "Левый ⌥ Option";
+"modifier.rightCommand" = "Правый ⌘ Command";
+"modifier.leftCommand" = "Левый ⌘ Command";
+"modifier.rightControl" = "Правый ⌃ Control";
+"modifier.function" = "fn / 🌐 Globe";
+
+/* Удаление всех данных */
+"deleteAll.title" = "Удалить все данные?";
+"deleteAll.body" = "Будут безвозвратно удалены:\n• %1$d транскрибаций\n• %2$d аудиофайлов\n• API-ключ\n• все настройки\n\nДля подтверждения введите ниже:\n%3$@";
+"deleteAll.confirm" = "Удалить всё";
+"deleteAll.mismatch.title" = "Фраза не совпала";
+"deleteAll.mismatch.msg" = "Удаление отменено. Ничего не тронуто.";
+"deleteAll.done.title" = "Готово";
+"deleteAll.done.msg" = "Все данные удалены.";
+
+/* О программе */
+"about.version" = "Версия %@";
+"about.tagline" = "Диктовка с пунктуацией через Groq Whisper";
+"about.github" = "GitHub";
+
+/* Ошибки Groq */
+"groq.err.noKey" = "Не задан API-ключ Groq. Откройте Настройки и вставьте ключ.";
+"groq.err.readFile" = "Не удалось прочитать аудиофайл записи.";
+"groq.err.network" = "Ошибка сети: %@";
+"groq.err.http401" = "Ключ Groq отклонён (401). Проверьте ключ в Настройках.";
+"groq.err.http413" = "Запись слишком длинная для одного запроса (413). Разбейте на части.";
+"groq.err.http429" = "Превышен лимит Groq (429). Подождите немного и повторите.";
+"groq.err.httpOther" = "Groq вернул %1$d: %2$@";
+"groq.err.decode" = "Не удалось разобрать ответ Groq.";
+"groq.validate.noResponse" = "нет ответа";
+"groq.validate.rejected" = "ключ отклонён (401)";
+"groq.validate.http" = "HTTP %d";

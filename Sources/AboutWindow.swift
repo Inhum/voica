@@ -10,7 +10,7 @@ final class AboutWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: 360, height: 260),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
-        window.title = "О Voica"
+        window.title = L("menu.about")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         self.init(window: window)
@@ -42,16 +42,16 @@ final class AboutWindowController: NSWindowController {
         name.font = .boldSystemFont(ofSize: 20)
         stack.addArrangedSubview(name)
 
-        let ver = NSTextField(labelWithString: "Версия \(appVersion)")
+        let ver = NSTextField(labelWithString: L("about.version", appVersion))
         ver.textColor = .secondaryLabelColor
         stack.addArrangedSubview(ver)
 
-        let desc = NSTextField(labelWithString: "Диктовка с пунктуацией через Groq Whisper")
+        let desc = NSTextField(labelWithString: L("about.tagline"))
         desc.textColor = .secondaryLabelColor
         desc.font = .systemFont(ofSize: 11)
         stack.addArrangedSubview(desc)
 
-        let gh = NSButton(title: "GitHub", target: self, action: #selector(openGitHub))
+        let gh = NSButton(title: L("about.github"), target: self, action: #selector(openGitHub))
         gh.bezelStyle = .rounded
         stack.addArrangedSubview(gh)
 

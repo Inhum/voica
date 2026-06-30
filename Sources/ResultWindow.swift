@@ -48,7 +48,7 @@ final class ResultWindowController: NSWindowController {
         infoLabel.font = .systemFont(ofSize: 11)
         content.addSubview(infoLabel)
 
-        copyButton = NSButton(title: " Copy", target: self, action: #selector(copyText))
+        copyButton = NSButton(title: " " + L("result.copy"), target: self, action: #selector(copyText))
         copyButton.translatesAutoresizingMaskIntoConstraints = false
         copyButton.bezelStyle = .rounded
         copyButton.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
@@ -83,9 +83,9 @@ final class ResultWindowController: NSWindowController {
         textView.scrollToBeginningOfDocument(nil)
         copyToPasteboard(transcription.text)
 
-        var parts: [String] = ["Скопировано в буфер"]
-        if let lang = transcription.language { parts.append("язык: \(lang)") }
-        if let d = transcription.duration { parts.append(String(format: "%.0f c", d)) }
+        var parts: [String] = [L("result.copiedToClipboard")]
+        if let lang = transcription.language { parts.append(L("result.language", lang)) }
+        if let d = transcription.duration { parts.append(L("common.seconds", d)) }
         infoLabel.stringValue = parts.joined(separator: " · ")
 
         if !wasVisible { window?.center() }   // не дёргать позицию уже открытого окна
@@ -107,11 +107,11 @@ final class ResultWindowController: NSWindowController {
 
     private func flashCopied() {
         copyButton.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: "Copied")
-        copyButton.title = " Copied"
+        copyButton.title = " " + L("result.copied")
         resetCopyIconWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.copyButton.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
-            self?.copyButton.title = " Copy"
+            self?.copyButton.title = " " + L("result.copy")
         }
         resetCopyIconWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)

@@ -76,13 +76,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainMenu.addItem(editItem)
         let edit = NSMenu(title: "Edit")
         editItem.submenu = edit
-        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(withTitle: L("edit.undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: L("edit.redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: L("edit.cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: L("edit.copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: L("edit.paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: L("edit.selectAll"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
 
         return mainMenu
     }
@@ -109,13 +109,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
-        addItem(to: menu, title: "Dictate", action: #selector(toggleDictation), key: "")
+        addItem(to: menu, title: L("menu.dictate"), action: #selector(toggleDictation), key: "")
         menu.addItem(.separator())
-        addItem(to: menu, title: "History…", action: #selector(showHistory), key: "")
-        addItem(to: menu, title: "Settings…", action: #selector(showSettings), key: ",")
-        addItem(to: menu, title: "About Voica", action: #selector(showAbout), key: "")
+        addItem(to: menu, title: L("menu.history"), action: #selector(showHistory), key: "")
+        addItem(to: menu, title: L("menu.settings"), action: #selector(showSettings), key: ",")
+        addItem(to: menu, title: L("menu.about"), action: #selector(showAbout), key: "")
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Voica",
+        let quit = NSMenuItem(title: L("menu.quit"),
                               action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
@@ -181,12 +181,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         recorder.requestPermission { [weak self] granted in
             guard let self else { return }
             guard granted else {
-                self.alert("Нет доступа к микрофону",
-                           "Разрешите доступ в System Settings → Privacy & Security → Microphone.")
+                self.alert(L("alert.mic.title"), L("alert.mic.msg"))
                 return
             }
             guard self.recorder.start() else {
-                self.alert("Не удалось начать запись", "Проверьте микрофон и попробуйте снова.")
+                self.alert(L("alert.recstart.title"), L("alert.recstart.msg"))
                 return
             }
             self.state = .recording
@@ -210,7 +209,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case .success(let t):
                     if t.text.isEmpty {
                         try? FileManager.default.removeItem(at: rec.url)
-                        self.alert("Пусто", "Whisper не распознал речь. Попробуйте ещё раз.")
+                        self.alert(L("alert.empty.title"), L("alert.empty.msg"))
                     } else {
                         Store.shared.insert(text: t.text, language: t.language,
                                             duration: t.duration ?? rec.duration,
@@ -221,7 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 case .failure(let err):
                     try? FileManager.default.removeItem(at: rec.url)
-                    self.alert("Ошибка транскрибации", err.localizedDescription)
+                    self.alert(L("alert.transcribe.title"), err.localizedDescription)
                 }
             }
         }

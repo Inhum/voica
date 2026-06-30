@@ -19,20 +19,20 @@ enum GroqError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noKey:
-            return "Не задан API-ключ Groq. Откройте Settings и вставьте ключ."
+            return L("groq.err.noKey")
         case .readFile:
-            return "Не удалось прочитать аудиофайл записи."
+            return L("groq.err.readFile")
         case .network(let m):
-            return "Ошибка сети: \(m)"
+            return L("groq.err.network", m)
         case .http(let code, let msg):
             switch code {
-            case 401: return "Ключ Groq отклонён (401). Проверьте ключ в Settings."
-            case 413: return "Запись слишком длинная для одного запроса (413). Разбейте на части."
-            case 429: return "Превышен лимит Groq (429). Подождите немного и повторите."
-            default:  return "Groq вернул \(code): \(Self.shorten(msg))"
+            case 401: return L("groq.err.http401")
+            case 413: return L("groq.err.http413")
+            case 429: return L("groq.err.http429")
+            default:  return L("groq.err.httpOther", code, Self.shorten(msg))
             }
         case .decode:
-            return "Не удалось разобрать ответ Groq."
+            return L("groq.err.decode")
         }
     }
 
@@ -62,7 +62,7 @@ enum GroqClient {
         URLSession.shared.dataTask(with: req) { data, resp, err in
             if let err = err { return completion(.failure(.network(err.localizedDescription))) }
             guard let http = resp as? HTTPURLResponse, let data = data else {
-                return completion(.failure(.network("пустой ответ")))
+                return completion(.failure(.network(L("groq.validate.noResponse"))))
             }
             guard (200..<300).contains(http.statusCode) else {
                 let msg = String(data: data, encoding: .utf8) ?? ""
@@ -89,11 +89,11 @@ enum GroqClient {
         req.timeoutInterval = 20
         URLSession.shared.dataTask(with: req) { _, resp, err in
             if let err = err { return completion(err.localizedDescription) }
-            guard let http = resp as? HTTPURLResponse else { return completion("нет ответа") }
+            guard let http = resp as? HTTPURLResponse else { return completion(L("groq.validate.noResponse")) }
             switch http.statusCode {
             case 200:  completion(nil)
-            case 401:  completion("ключ отклонён (401)")
-            default:   completion("HTTP \(http.statusCode)")
+            case 401:  completion(L("groq.validate.rejected"))
+            default:   completion(L("groq.validate.http", http.statusCode))
             }
         }.resume()
     }

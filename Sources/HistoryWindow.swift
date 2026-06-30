@@ -28,7 +28,7 @@ final class HistoryWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: 760, height: 440),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false)
-        window.title = "Voica — История"
+        window.title = L("history.title")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         window.minSize = NSSize(width: 600, height: 320)
@@ -83,12 +83,12 @@ final class HistoryWindowController: NSWindowController {
         infoLabel.font = .systemFont(ofSize: 11)
         content.addSubview(infoLabel)
 
-        copyButton = makeButton("Copy", symbol: "doc.on.doc", action: #selector(copyText))
-        playButton = makeButton("Play", symbol: "play.fill", action: #selector(togglePlay))
-        deleteButton = makeButton("Delete", symbol: "trash", action: #selector(deleteSelected))
+        copyButton = makeButton(L("result.copy"), symbol: "doc.on.doc", action: #selector(copyText))
+        playButton = makeButton(L("history.play"), symbol: "play.fill", action: #selector(togglePlay))
+        deleteButton = makeButton(L("history.delete"), symbol: "trash", action: #selector(deleteSelected))
         for b in [copyButton, playButton, deleteButton] { content.addSubview(b!) }
 
-        emptyLabel = NSTextField(labelWithString: "История пуста")
+        emptyLabel = NSTextField(labelWithString: L("history.empty"))
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
         emptyLabel.textColor = .tertiaryLabelColor
         emptyLabel.font = .systemFont(ofSize: 14)
@@ -177,7 +177,7 @@ final class HistoryWindowController: NSWindowController {
 
         var parts = [Self.dateFormatter.string(from: r.createdAt)]
         if let l = r.language { parts.append(l) }
-        if let d = r.durationSec { parts.append(String(format: "%.0f c", d)) }
+        if let d = r.durationSec { parts.append(L("common.seconds", d)) }
         infoLabel.stringValue = parts.joined(separator: " · ")
 
         copyButton.isEnabled = true
@@ -194,11 +194,11 @@ final class HistoryWindowController: NSWindowController {
         pb.clearContents()
         pb.setString(r.text, forType: .string)
         copyButton.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: "Copied")
-        copyButton.title = " Copied"
+        copyButton.title = " " + L("result.copied")
         resetCopyWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.copyButton.image = NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "Copy")
-            self?.copyButton.title = " Copy"
+            self?.copyButton.title = " " + L("result.copy")
         }
         resetCopyWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
@@ -227,16 +227,16 @@ final class HistoryWindowController: NSWindowController {
     private func setPlayTitle(playing: Bool) {
         playButton.image = NSImage(systemSymbolName: playing ? "stop.fill" : "play.fill",
                                    accessibilityDescription: playing ? "Stop" : "Play")
-        playButton.title = playing ? " Stop" : " Play"
+        playButton.title = playing ? " " + L("history.stop") : " " + L("history.play")
     }
 
     @objc private func deleteSelected() {
         guard let r = selectedRecord else { return }
         let alert = NSAlert()
-        alert.messageText = "Удалить запись?"
-        alert.informativeText = "Запись и её аудио будут удалены без возможности восстановления."
-        alert.addButton(withTitle: "Удалить")
-        alert.addButton(withTitle: "Отмена")
+        alert.messageText = L("history.deleteConfirm.title")
+        alert.informativeText = L("history.deleteConfirm.msg")
+        alert.addButton(withTitle: L("common.delete"))
+        alert.addButton(withTitle: L("common.cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         Store.shared.delete(id: r.id)
