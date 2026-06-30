@@ -12,7 +12,7 @@
 - **История** всех транскрибаций (SQLite) с поиском по списку, повторным копированием и проигрыванием аудио.
 - **Хранение аудио** с авто-удалением (по умолчанию 30 дней, настраивается; текст истории остаётся).
 - **Автоопределение языка** (русский + английские вкрапления).
-- API-ключ хранится в **Keychain**, не в файлах.
+- API-ключ хранится в **защищённом файле** (права `0600`, доступен только вам).
 
 ## Установка
 
@@ -53,7 +53,7 @@
 ~/Library/Application Support/com.ushakov.voica/history.sqlite   # история
 ~/Library/Application Support/com.ushakov.voica/audio/           # аудиозаписи
 ~/Library/Preferences/com.ushakov.voica.plist                   # настройки
-Keychain (служба com.ushakov.voica)                             # API-ключ
+~/Library/Application Support/com.ushakov.voica/credentials      # API-ключ (0600)
 ```
 
 ## Удаление

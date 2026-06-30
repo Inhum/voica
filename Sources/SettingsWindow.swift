@@ -1,4 +1,4 @@
-// Окно настроек: API-ключ (Keychain), режим/клавиша диктовки, хранение аудио,
+// Окно настроек: API-ключ (защищённый файл), режим/клавиша диктовки, хранение аудио,
 // полное удаление данных с подтверждением случайной фразой.
 
 import Cocoa
@@ -179,7 +179,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func populate() {
-        let key = Keychain.load() ?? ""
+        let key = KeyStore.load() ?? ""
         secureKeyField.stringValue = key
         plainKeyField.stringValue = key
         keyStatusLabel.stringValue = key.isEmpty ? "Ключ не задан" : "Ключ сохранён"
@@ -217,8 +217,8 @@ final class SettingsWindowController: NSWindowController {
             keyStatusLabel.stringValue = "Поле пустое"
             return
         }
-        if Keychain.save(key) {
-            keyStatusLabel.stringValue = "Сохранено в Keychain"
+        if KeyStore.save(key) {
+            keyStatusLabel.stringValue = "Сохранено"
         } else {
             keyStatusLabel.stringValue = "Не удалось сохранить"
         }
@@ -272,7 +272,7 @@ final class SettingsWindowController: NSWindowController {
             Будут безвозвратно удалены:
             • \(counts.records) транскрибаций
             • \(counts.audioFiles) аудиофайлов
-            • API-ключ из Keychain
+            • API-ключ
             • все настройки
 
             Для подтверждения введите ниже:
@@ -295,7 +295,7 @@ final class SettingsWindowController: NSWindowController {
         }
 
         Store.shared.deleteAll()
-        Keychain.delete()
+        KeyStore.delete()
         Prefs.reset()
         populate()
         onHotkeySettingsChanged?()

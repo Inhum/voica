@@ -13,12 +13,12 @@ enum SelfTest {
 
         print("Voica self-test")
 
-        // Keychain — с восстановлением исходного ключа
-        let savedKey = Keychain.load()
-        Keychain.save("voica-selftest")
-        check("keychain save/load", Keychain.load() == "voica-selftest")
-        if let s = savedKey { Keychain.save(s) } else { Keychain.delete() }
-        check("keychain restored", Keychain.load() == savedKey)
+        // KeyStore — с восстановлением исходного ключа
+        let savedKey = KeyStore.load()
+        KeyStore.save("voica-selftest")
+        check("keystore save/load", KeyStore.load() == "voica-selftest")
+        if let s = savedKey { KeyStore.save(s) } else { KeyStore.delete() }
+        check("keystore restored", KeyStore.load() == savedKey)
 
         // Store — вставка и удаление тестовой записи (история не меняется)
         let before = Store.shared.all().count

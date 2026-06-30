@@ -17,20 +17,20 @@
 | Аудио | Хранятся записи, retention по умолчанию **30 дней**, настраивается |
 | Язык | Автоопределение (основной русский + вкрапления английского) |
 | Постобработка | Только Whisper, без LLM. Free tier Groq |
-| Ключ | В Keychain. Ввод при первом старте + поле в Settings (с «Проверить») |
+| Ключ | В защищённом файле 0600. Ввод при первом старте + поле в Settings (с «Проверить») |
 | Удаление данных | Delete all data с подтверждением случайной фразой (защита от дурака) |
 
 ## Стек
 
 - Swift + AppKit (меню-бар, окна), AVFoundation (запись), URLSession (Groq),
-  sqlite3 (история), Keychain Services (ключ).
+  sqlite3 (история), защищённый файл 0600 (ключ).
 - Сборка `swiftc` → `.app` (Info.plist, ad-hoc codesign) → `.dmg`. Без Xcode-проекта.
 
 ## Данные (вне .app, переживают обновление)
 
 - `~/Library/Application Support/com.ushakov.voica/` — `history.sqlite` + `audio/`
 - `~/Library/Preferences/com.ushakov.voica.plist` — настройки (UserDefaults)
-- Keychain — API-ключ
+- `~/Library/Application Support/com.ushakov.voica/credentials` — API-ключ (0600)
 - `~/Library/Logs/Voica/` — логи
 
 ## Лимиты Groq (free tier, whisper-large-v3-turbo)
