@@ -71,9 +71,16 @@ final class ResultWindowController: NSWindowController {
         ])
     }
 
-    /// Показать текст: кладёт в буфер, выводит окно на передний план.
+    /// Показать текст: кладёт в буфер, обновляет окно (одно на все результаты)
+    /// и выводит его на передний план.
     func show(_ transcription: Transcription) {
+        let wasVisible = window?.isVisible ?? false
+
+        // Снять фокус: если поле сейчас редактируется, присваивание .string
+        // может не отрисоваться — поэтому сперва уводим первого респондера.
+        window?.makeFirstResponder(nil)
         textView.string = transcription.text
+        textView.scrollToBeginningOfDocument(nil)
         copyToPasteboard(transcription.text)
 
         var parts: [String] = ["Скопировано в буфер"]
@@ -81,8 +88,8 @@ final class ResultWindowController: NSWindowController {
         if let d = transcription.duration { parts.append(String(format: "%.0f c", d)) }
         infoLabel.stringValue = parts.joined(separator: " · ")
 
+        if !wasVisible { window?.center() }   // не дёргать позицию уже открытого окна
         NSApp.activate(ignoringOtherApps: true)
-        window?.center()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
     }
