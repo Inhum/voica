@@ -10,6 +10,8 @@
 	<string>Voica</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.ushakov.voica</string>
+	<key>CFBundleIconFile</key>
+	<string>Voica</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleDevelopmentRegion</key>
@@ -20,9 +22,9 @@
 		<string>ru</string>
 	</array>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0</string>
+	<string>0.3.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>

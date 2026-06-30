@@ -20,6 +20,7 @@ swiftc "${SWIFT_FLAGS[@]}" -o "$APP/Contents/MacOS/$NAME" Sources/*.swift
 
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"   # локализация (en/ru)
+[ -f Resources/Voica.icns ] && cp Resources/Voica.icns "$APP/Contents/Resources/"
 
 # Ad-hoc подпись (без Apple Developer). Первый запуск .app — правой кнопкой → Open.
 codesign --force --sign - "$APP" >/dev/null 2>&1 \
