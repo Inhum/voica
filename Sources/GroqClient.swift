@@ -25,7 +25,12 @@ enum GroqError: Error, LocalizedError {
         case .network(let m):
             return "Ошибка сети: \(m)"
         case .http(let code, let msg):
-            return "Groq вернул \(code): \(Self.shorten(msg))"
+            switch code {
+            case 401: return "Ключ Groq отклонён (401). Проверьте ключ в Settings."
+            case 413: return "Запись слишком длинная для одного запроса (413). Разбейте на части."
+            case 429: return "Превышен лимит Groq (429). Подождите немного и повторите."
+            default:  return "Groq вернул \(code): \(Self.shorten(msg))"
+            }
         case .decode:
             return "Не удалось разобрать ответ Groq."
         }

@@ -1,0 +1,53 @@
+// Самотест без сети и GUI: ./build/Voica.app/Contents/MacOS/Voica --test-all
+// Восстанавливает изменённое состояние (ключ, настройки, тестовую запись).
+
+import Foundation
+
+enum SelfTest {
+    static func run() -> Bool {
+        var passed = 0, failed = 0
+        func check(_ name: String, _ cond: Bool) {
+            if cond { passed += 1; print("  ✓ \(name)") }
+            else { failed += 1; print("  ✗ \(name)") }
+        }
+
+        print("Voica self-test")
+
+        // Keychain — с восстановлением исходного ключа
+        let savedKey = Keychain.load()
+        Keychain.save("voica-selftest")
+        check("keychain save/load", Keychain.load() == "voica-selftest")
+        if let s = savedKey { Keychain.save(s) } else { Keychain.delete() }
+        check("keychain restored", Keychain.load() == savedKey)
+
+        // Store — вставка и удаление тестовой записи (история не меняется)
+        let before = Store.shared.all().count
+        if let id = Store.shared.insert(text: "__voica_selftest__", language: "ru",
+                                        duration: 1.0, model: "test", audioTempURL: nil) {
+            check("store insert", Store.shared.all().contains { $0.id == id })
+            Store.shared.delete(id: id)
+            check("store delete", !Store.shared.all().contains { $0.id == id })
+        } else {
+            check("store insert", false)
+        }
+        check("store count unchanged", Store.shared.all().count == before)
+
+        // Prefs — round-trip с восстановлением
+        let savedDays = Prefs.retentionDays
+        Prefs.retentionDays = 7
+        check("prefs round-trip", Prefs.retentionDays == 7)
+        Prefs.retentionDays = savedDays
+
+        // Hotkey — сопоставление клавиш с флагами
+        check("hotkey flag option", HotkeyManager.flag(for: 61) == .option)
+        check("hotkey flag command", HotkeyManager.flag(for: 54) == .command)
+        check("hotkey flag function", HotkeyManager.flag(for: 63) == .function)
+
+        // Groq — конфигурация
+        check("groq model", GroqClient.model == "whisper-large-v3-turbo")
+        check("groq endpoint", GroqClient.endpoint.host == "api.groq.com")
+
+        print("Итог: \(passed) passed, \(failed) failed")
+        return failed == 0
+    }
+}

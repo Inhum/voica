@@ -25,7 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         w.onHotkeySettingsChanged = { [weak self] in self?.applyHotkeySettings() }
         return w
     }()
+    private lazy var aboutWindow = AboutWindowController()
 
+    private var pulseTimer: Timer?
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -93,6 +95,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Voica")
         button.image?.isTemplate = (tint == nil)
         button.contentTintColor = tint
+
+        if state == .recording { startPulse() } else { stopPulse() }
+    }
+
+    private func startPulse() {
+        guard pulseTimer == nil, let button = statusItem.button else { return }
+        var dim = true
+        pulseTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.45
+                button.animator().alphaValue = dim ? 0.35 : 1.0
+            }
+            dim.toggle()
+        }
+    }
+
+    private func stopPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
+        statusItem.button?.alphaValue = 1.0
     }
 
     // MARK: - Диктовка
@@ -161,13 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showHistory()  { historyWindow.reloadAndShow() }
     @objc private func showSettings() { settingsWindow.show() }
 
-    @objc private func showAbout() {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Voica \(appVersion)"
-        alert.informativeText = "Диктовка с пунктуацией через Groq Whisper."
-        alert.runModal()
-    }
+    @objc private func showAbout() { aboutWindow.show() }
 
     private func alert(_ title: String, _ message: String) {
         NSApp.activate(ignoringOtherApps: true)
@@ -177,6 +193,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         a.informativeText = message
         a.runModal()
     }
+}
+
+// Режим самотеста — без GUI.
+if CommandLine.arguments.contains("--test-all") {
+    exit(SelfTest.run() ? 0 : 1)
 }
 
 let app = NSApplication.shared
