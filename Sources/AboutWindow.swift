@@ -12,6 +12,7 @@ final class AboutWindowController: NSWindowController {
             backing: .buffered, defer: false)
         window.title = "О Voica"
         window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         self.init(window: window)
         buildUI()
     }

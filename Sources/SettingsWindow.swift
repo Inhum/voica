@@ -34,6 +34,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered, defer: false)
         window.title = "Voica — Настройки"
         window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         self.init(window: window)
         buildUI()
     }
@@ -82,6 +83,11 @@ final class SettingsWindowController: NSWindowController {
         let keyBtnRow = NSStackView(views: [saveBtn, testBtn, keyStatusLabel])
         keyBtnRow.spacing = 8
         stack.addArrangedSubview(keyBtnRow)
+
+        let hint = NSTextField(labelWithString: "Ключ сохраняется кнопкой «Сохранить». Остальные настройки применяются сразу.")
+        hint.font = .systemFont(ofSize: 10)
+        hint.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(hint)
 
         stack.addArrangedSubview(separator())
 

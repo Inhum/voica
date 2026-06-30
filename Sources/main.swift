@@ -33,9 +33,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
 
+        NSApp.mainMenu = buildMainMenu()   // нужен Edit-меню, иначе не работают Cmd+V/C/X/A
+
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.menu = buildMenu()
         updateIcon()
+
+        // Окна Voica переводят приложение в обычный режим (видно в Cmd+Tab и Dock),
+        // при закрытии последнего — обратно в фоновый меню-бар агент.
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(voicaWindowBecameKey(_:)),
+            name: NSWindow.didBecomeKeyNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(voicaWindowWillClose(_:)),
+            name: NSWindow.willCloseNotification, object: nil)
 
         // Хоткей. Требует Accessibility для глобального перехвата.
         HotkeyManager.ensureAccessibility(prompt: true)
@@ -54,6 +65,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyHotkeySettings() {
         hotkey.pttKeyCode = UInt16(Prefs.pttKeyCode)
         hotkey.mode = (Prefs.dictationMode == "toggle") ? .toggle : .ptt
+    }
+
+    // MARK: - Главное меню (для системных Cmd+V/C/X/A в полях ввода)
+
+    private func buildMainMenu() -> NSMenu {
+        let mainMenu = NSMenu()
+
+        let editItem = NSMenuItem()
+        mainMenu.addItem(editItem)
+        let edit = NSMenu(title: "Edit")
+        editItem.submenu = edit
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        return mainMenu
+    }
+
+    // MARK: - Видимость окон / режим приложения
+
+    @objc private func voicaWindowBecameKey(_ note: Notification) {
+        guard (note.object as? NSWindow)?.identifier?.rawValue == "voica-main" else { return }
+        if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+    }
+
+    @objc private func voicaWindowWillClose(_ note: Notification) {
+        let closing = note.object as? NSWindow
+        guard closing?.identifier?.rawValue == "voica-main" else { return }
+        DispatchQueue.main.async {
+            let stillOpen = NSApp.windows.contains {
+                $0.identifier?.rawValue == "voica-main" && $0.isVisible && $0 !== closing
+            }
+            if !stillOpen { NSApp.setActivationPolicy(.accessory) }
+        }
     }
 
     // MARK: - Меню

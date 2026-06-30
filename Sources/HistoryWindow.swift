@@ -30,6 +30,7 @@ final class HistoryWindowController: NSWindowController {
             backing: .buffered, defer: false)
         window.title = "Voica — История"
         window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         window.minSize = NSSize(width: 600, height: 320)
         self.init(window: window)
         buildUI()

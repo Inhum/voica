@@ -16,6 +16,7 @@ final class ResultWindowController: NSWindowController {
             backing: .buffered, defer: false)
         window.title = "Voica"
         window.isReleasedWhenClosed = false
+        window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         window.minSize = NSSize(width: 360, height: 200)
         self.init(window: window)
         buildUI()
