@@ -40,12 +40,12 @@
 
 ## Этапы
 
-1. **Каркас** — репо, скелет `.app`, иконка меню-бара, build/run-скрипты. ← *текущий*
-2. **Запись + Groq** — hotkey (PTT), Recorder, GroqClient, текст в буфер + окно результата.
-3. **Хранилище** — SQLite, сохранение аудио, retention-чистка, окно History.
-4. **Settings + Keychain** — ключ, режим, хоткей, retention, Delete all data.
-5. **About + полировка** — About, пульсация иконки, ошибки/лимиты, самотест `--test-all`.
-6. **Упаковка + доки** — `.dmg`, README.
+1. ✅ **Каркас** — репо, скелет `.app`, иконка меню-бара, build/run-скрипты.
+2. ✅ **Запись + Groq** — hotkey (PTT), Recorder, GroqClient, текст в буфер + окно результата.
+3. ✅ **Хранилище** — SQLite, сохранение аудио, retention-чистка, окно History.
+4. ✅ **Settings + Keychain** — ключ, режим, хоткей, retention, Delete all data.
+5. ✅ **About + полировка** — About, пульсация иконки, ошибки/лимиты, самотест `--test-all`.
+6. ✅ **Упаковка + доки** — `.dmg`, README.
 
 ## Разрешения macOS (один раз)
 
