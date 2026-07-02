@@ -73,6 +73,11 @@
 Voica использует ваш **собственный** ключ Groq (модель BYO-key) — приложение ничей ключ
 не раздаёт. Использование Groq API подчиняется [условиям Groq](https://groq.com/terms-of-use).
 
+## Благодарности
+
+Voica во многом собрана с помощью [Claude Code](https://claude.com/claude-code) —
+агентного инструмента Anthropic — в роли AI-напарника.
+
 ## Лицензия
 
 [MIT](LICENSE) © 2026 Ivan Ushakov

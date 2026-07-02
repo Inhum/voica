@@ -104,6 +104,11 @@ can't stably identify an ad-hoc app). With the certificate it persists. See
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). This is a
 spare-time project, so responses may be slow and not every feature request will be accepted.
 
+## Acknowledgements
+
+Voica was built largely with [Claude Code](https://claude.com/claude-code), Anthropic's
+agentic coding tool, as an AI pair-programmer.
+
 ## License
 
 [MIT](LICENSE) © 2026 Ivan Ushakov
