@@ -22,9 +22,17 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"   # локализация (en/ru)
 [ -f Resources/Voica.icns ] && cp Resources/Voica.icns "$APP/Contents/Resources/"
 
-# Ad-hoc подпись (без Apple Developer). Первый запуск .app — правой кнопкой → Open.
-codesign --force --sign - "$APP" >/dev/null 2>&1 \
-    && echo "→ Подписано ad-hoc" \
+# Подпись. Если есть локальный сертификат «Voica Self-Signed» — подписываем им
+# (стабильная идентичность → разрешение Accessibility держится между обновлениями).
+# Иначе откат на ad-hoc. Сертификат создаётся один раз: ./scripts/make-cert.sh
+IDENTITY="Voica Self-Signed"
+if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+    SIGN="$IDENTITY"; NOTE="сертификатом ${IDENTITY}"
+else
+    SIGN="-"; NOTE="ad-hoc (сертификата нет — см. scripts/make-cert.sh)"
+fi
+codesign --force --sign "$SIGN" "$APP" >/dev/null 2>&1 \
+    && echo "→ Подписано $NOTE" \
     || echo "⚠ codesign не сработал (запуск всё равно возможен)"
 
 echo "✓ Готово: $APP"

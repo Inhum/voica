@@ -70,11 +70,16 @@
 Нужны только Command Line Tools (`xcode-select --install`), полный Xcode не требуется.
 
 ```bash
+./scripts/make-cert.sh       # один раз: локальный сертификат для стабильной подписи
 ./scripts/build.sh           # собирает build/Voica.app (release)
 ./scripts/run.sh             # сборка + запуск с логами в терминале
 ./scripts/package.sh         # собирает build/Voica-<версия>.dmg
 ./build/Voica.app/Contents/MacOS/Voica --test-all   # самотест
 ```
+
+`make-cert.sh` создаёт self-signed сертификат в связке ключей. Без него сборка
+подпишется ad-hoc, и разрешение Accessibility будет слетать при каждом обновлении
+(macOS не может стабильно опознать ad-hoc приложение). С сертификатом — держится.
 
 ## Лимиты Groq (free tier, whisper-large-v3-turbo)
 
