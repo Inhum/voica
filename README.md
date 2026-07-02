@@ -1,91 +1,109 @@
-# Voica
+<!-- Languages: **English** · [Русский](README.ru.md) -->
 
-Меню-бар приложение для macOS: диктуешь голосом — получаешь текст **с пунктуацией**.
-Транскрибация через [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`).
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="Voica icon">
+</p>
 
-> Встроенная диктовка iOS/macOS не расставляет знаки препинания. Voica — расставляет.
+<h1 align="center">Voica</h1>
 
-## Возможности
+<p align="center">
+  A macOS menu-bar app for voice dictation <b>with punctuation</b>, powered by Groq Whisper.
+</p>
 
-- **Диктовка по горячей клавише**: PTT (зажал-сказал-отпустил) или Toggle (нажал/нажал).
-- Распознанный текст **автоматически копируется в буфер** и показывается в окне (редактируемом).
-- **История** всех транскрибаций (SQLite) с поиском по списку, повторным копированием и проигрыванием аудио.
-- **Хранение аудио** с авто-удалением (по умолчанию 30 дней, настраивается; текст истории остаётся).
-- **Автоопределение языка** распознавания (русский + английские вкрапления).
-- **Интерфейс на русском и английском** — по языку системы.
-- API-ключ хранится в **защищённом файле** (права `0600`, доступен только вам).
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%2013%2B-black" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
+  <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
+</p>
 
-## Установка
+---
 
-1. Скачайте `Voica-<версия>.dmg` (или соберите сами — см. ниже).
-2. Откройте `.dmg` и перетащите **Voica** в **Applications**.
-3. Первый запуск: приложение не нотаризовано (ad-hoc подпись), поэтому
-   **правый клик по Voica → Open → Open**. Дальше запускается обычным двойным кликом.
+Built-in dictation on macOS/iOS doesn't add punctuation — no periods, commas, or question
+marks. Voica does: dictate by a hotkey and get clean, punctuated text in your clipboard,
+transcribed via [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`), which is fast
+and cheap.
 
-## Первый запуск и разрешения
+## Features
 
-При первом использовании macOS попросит выдать два разрешения:
+- **Hotkey dictation** — push-to-talk (hold) or toggle (press to start / stop).
+- Recognized text is **auto-copied to the clipboard** and shown in an editable window.
+- **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
+- **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
+- **Automatic language detection** (works for mixed speech).
+- **Localized UI** — English and Russian, follows the system language.
+- API key stored in a **protected file** (`0600`, readable only by you) — never in the repo.
+- **Privacy-friendly**: everything stays on your Mac; audio goes only to Groq for transcription.
 
-- **Микрофон** — для записи (запрос появится при первой диктовке).
-- **Accessibility** — для глобальной горячей клавиши:
-  System Settings → Privacy & Security → **Accessibility** → включить Voica.
-  Доступ обычно срабатывает сразу; если хоткей не реагирует — перезапустите приложение.
+## Install
 
-Затем откроется окно настроек — **вставьте Groq API-ключ** (`gsk_…`),
-нажмите **Проверить**, затем **Сохранить**. Ключ можно получить на
-[console.groq.com/keys](https://console.groq.com/keys).
+1. Download `Voica-<version>.dmg` from [Releases](https://github.com/Inhum/voica/releases)
+   (or build from source — see below).
+2. Open the `.dmg` and drag **Voica** to **Applications**.
+3. The app isn't notarized, so on first launch macOS warns about an unidentified developer:
+   System Settings → Privacy & Security → **Open Anyway**. After that it opens normally.
 
-## Использование
+## First run & permissions
 
-- **PTT** (по умолчанию): зажмите правый ⌥ Option, говорите, отпустите — текст придёт через секунду.
-- **Toggle**: одно нажатие выбранной клавиши — старт, второе — стоп.
-- Или кликните **Dictate** в меню (работает как ручной старт/стоп, без горячей клавиши).
+On first use macOS asks for two permissions:
 
-Иконка в строке меню показывает состояние: 🎙 покой → 🔴 запись (пульсирует) → 🔵 отправка в Groq.
+- **Microphone** — to record (prompted on your first dictation).
+- **Accessibility** — for the global hotkey:
+  System Settings → Privacy & Security → **Accessibility** → enable Voica.
 
-## Настройки
+Then the Settings window opens — paste your **Groq API key** (`gsk_…`), click **Test**,
+then **Save**. Get a key at [console.groq.com/keys](https://console.groq.com/keys).
 
-- API-ключ (с проверкой), режим диктовки (PTT/Toggle), клавиша,
-  хранение аудио и срок хранения, полное удаление данных.
+## Usage
 
-## Где хранятся данные
+- **Push-to-talk** (default): hold Right ⌥ Option, speak, release — text arrives in ~a second.
+- **Toggle**: one press of the chosen key starts, another stops.
+- Or click **Dictate** in the menu (manual start/stop, no hotkey needed).
+
+The menu-bar icon reflects state: idle → recording (pulsing) → sending to Groq.
+
+## Settings
+
+API key (with a Test button), dictation mode (push-to-talk / toggle), the key, audio
+storage and retention period, and a **Delete all data** action (guarded by a random phrase).
+
+## Where data is stored
 
 ```
-~/Library/Application Support/com.ushakov.voica/history.sqlite   # история
-~/Library/Application Support/com.ushakov.voica/audio/           # аудиозаписи
-~/Library/Preferences/com.ushakov.voica.plist                   # настройки
-~/Library/Application Support/com.ushakov.voica/credentials      # API-ключ (0600)
+~/Library/Application Support/com.ushakov.voica/history.sqlite   # history
+~/Library/Application Support/com.ushakov.voica/audio/           # audio recordings
+~/Library/Application Support/com.ushakov.voica/credentials      # API key (0600)
+~/Library/Preferences/com.ushakov.voica.plist                    # settings
 ```
 
-## Удаление
+## Bring your own Groq key
 
-- **Полная очистка из приложения**: Settings → **Delete all data**
-  (с подтверждением случайной фразой) — удаляет историю, аудио, ключ и настройки.
-- **Удаление приложения**: перетащите `Voica.app` в корзину. Данные выше при этом
-  остаются (стандартное поведение macOS) — удалите их вручную по путям из раздела выше,
-  либо заранее воспользуйтесь **Delete all data**.
+Voica uses **your own** Groq API key (BYO-key) — the app never ships or shares anyone's key.
+Each user gets a free key at [console.groq.com](https://console.groq.com); usage is subject
+to [Groq's Terms of Use](https://groq.com/terms-of-use). Free-tier limits (whisper-large-v3-turbo):
+20 req/min, 2000/day, 7200 audio-seconds/hour — far more than dictation needs.
 
-## Сборка из исходников
+## Build from source
 
-Нужны только Command Line Tools (`xcode-select --install`), полный Xcode не требуется.
+Only Command Line Tools are required (`xcode-select --install`); full Xcode is not needed.
 
 ```bash
-./scripts/make-cert.sh       # один раз: локальный сертификат для стабильной подписи
-./scripts/build.sh           # собирает build/Voica.app (release)
-./scripts/run.sh             # сборка + запуск с логами в терминале
-./scripts/package.sh         # собирает build/Voica-<версия>.dmg
-./build/Voica.app/Contents/MacOS/Voica --test-all   # самотест
+./scripts/make-cert.sh       # once: local self-signed cert for a stable signature
+./scripts/build.sh           # builds build/Voica.app (release)
+./scripts/run.sh             # build + run with logs in the terminal
+./scripts/package.sh         # builds build/Voica-<version>.dmg
+./build/Voica.app/Contents/MacOS/Voica --test-all   # self-test
 ```
 
-`make-cert.sh` создаёт self-signed сертификат в связке ключей. Без него сборка
-подпишется ad-hoc, и разрешение Accessibility будет слетать при каждом обновлении
-(macOS не может стабильно опознать ad-hoc приложение). С сертификатом — держится.
+`make-cert.sh` creates a self-signed signing certificate in your keychain. Without it the
+build is signed ad-hoc, and the Accessibility permission gets lost on every update (macOS
+can't stably identify an ad-hoc app). With the certificate it persists. See
+[docs/ROADMAP.md](docs/ROADMAP.md) for distribution, auto-update, and cross-platform notes.
 
-## Лимиты Groq (free tier, whisper-large-v3-turbo)
+## Contributing
 
-20 запросов/мин, 2000/день, 7200 секунд аудио/час, 28800/день.
-Файл ≤ 25 МБ ≈ ~100 минут речи (запись 16 кГц моно AAC) — для диктовки недостижимо.
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). This is a
+spare-time project, so responses may be slow and not every feature request will be accepted.
 
-## Лицензия
+## License
 
 [MIT](LICENSE) © 2026 Ivan Ushakov
