@@ -215,7 +215,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                             duration: t.duration ?? rec.duration,
                                             model: GroqClient.model, audioTempURL: rec.url)
                         try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
-                        self.resultWindow.show(t)
+                        if Prefs.outputMode == "window" {
+                            self.resultWindow.show(t)   // старое поведение: редактируемое окно
+                        } else {
+                            AutoInsert.insert(t.text)   // по умолчанию: вставить в активное поле
+                        }
                         self.historyWindow.refreshIfVisible()
                     }
                 case .failure(let err):

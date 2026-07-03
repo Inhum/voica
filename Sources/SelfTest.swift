@@ -38,6 +38,11 @@ enum SelfTest {
         check("prefs round-trip", Prefs.retentionDays == 7)
         Prefs.retentionDays = savedDays
 
+        let savedOutput = Prefs.outputMode
+        Prefs.outputMode = "window"
+        check("prefs outputMode round-trip", Prefs.outputMode == "window")
+        Prefs.outputMode = savedOutput
+
         // Hotkey — сопоставление клавиш с флагами
         check("hotkey flag option", HotkeyManager.flag(for: 61) == .option)
         check("hotkey flag command", HotkeyManager.flag(for: 54) == .command)

@@ -10,6 +10,7 @@ enum Prefs {
         static let storeAudio    = "storeAudio"
         static let pttKeyCode    = "pttKeyCode"
         static let dictationMode = "dictationMode"   // "ptt" | "toggle"
+        static let outputMode    = "outputMode"      // "insert" | "window"
     }
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
@@ -36,9 +37,16 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.dictationMode) }
     }
 
+    /// Куда отправлять распознанный текст. По умолчанию — авто-вставка в активное поле.
+    /// "window" — старое поведение: показать редактируемое окно результата.
+    static var outputMode: String {
+        get { d.string(forKey: Key.outputMode) ?? "insert" }
+        set { d.set(newValue, forKey: Key.outputMode) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
-        [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode]
+        [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

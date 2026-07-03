@@ -17,6 +17,7 @@ final class SettingsWindowController: NSWindowController {
     private enum StatusKind { case neutral, success, error }
 
     private var modeControl: NSSegmentedControl!
+    private var outputControl: NSSegmentedControl!
     private var keyPopup: NSPopUpButton!
     private var storeAudioToggle: NSButton!
     private var retentionField: NSTextField!
@@ -122,6 +123,16 @@ final class SettingsWindowController: NSWindowController {
         keyPopup.action = #selector(keyChoiceChanged)
         stack.addArrangedSubview(labeledRow(L("settings.keyChoice.label"), keyPopup))
 
+        outputControl = NSSegmentedControl(labels: [L("settings.output.insert"), L("settings.output.window")],
+                                           trackingMode: .selectOne, target: self,
+                                           action: #selector(outputChanged))
+        stack.addArrangedSubview(labeledRow(L("settings.output.label"), outputControl))
+
+        let outputHint = NSTextField(labelWithString: L("settings.output.hint"))
+        outputHint.font = .systemFont(ofSize: 10)
+        outputHint.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(outputHint)
+
         stack.addArrangedSubview(separator())
 
         // — Аудио —
@@ -205,6 +216,7 @@ final class SettingsWindowController: NSWindowController {
         if let idx = modifierChoices.firstIndex(where: { $0.1 == Prefs.pttKeyCode }) {
             keyPopup.selectItem(at: idx)
         }
+        outputControl.selectedSegment = (Prefs.outputMode == "window") ? 1 : 0
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
     }
@@ -292,6 +304,10 @@ final class SettingsWindowController: NSWindowController {
     @objc private func keyChoiceChanged() {
         Prefs.pttKeyCode = modifierChoices[keyPopup.indexOfSelectedItem].1
         onHotkeySettingsChanged?()
+    }
+
+    @objc private func outputChanged() {
+        Prefs.outputMode = (outputControl.selectedSegment == 1) ? "window" : "insert"
     }
 
     @objc private func storeAudioChanged() {

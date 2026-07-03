@@ -62,6 +62,10 @@
 "settings.mode.ptt" = "Hold to talk";
 "settings.mode.toggle" = "Toggle on/off";
 "settings.keyChoice.label" = "Key:";
+"settings.output.label" = "Output:";
+"settings.output.insert" = "Insert into field";
+"settings.output.window" = "Show window";
+"settings.output.hint" = "Insert pastes the text where your cursor is (needs Accessibility). It’s always copied to the clipboard too.";
 "settings.audio.header" = "Audio";
 "settings.audio.store" = "Keep audio recordings";
 "settings.audio.retentionPrefix" = "Delete audio older than";

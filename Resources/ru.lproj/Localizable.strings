@@ -62,6 +62,10 @@
 "settings.mode.ptt" = "Удержание";
 "settings.mode.toggle" = "Переключение";
 "settings.keyChoice.label" = "Клавиша:";
+"settings.output.label" = "Вывод:";
+"settings.output.insert" = "Вставлять в поле";
+"settings.output.window" = "Показывать окно";
+"settings.output.hint" = "Вставка помещает текст туда, где курсор (нужен доступ Accessibility). Текст также всегда копируется в буфер.";
 "settings.audio.header" = "Аудио";
 "settings.audio.store" = "Хранить аудиозаписи";
 "settings.audio.retentionPrefix" = "Удалять аудио старше";

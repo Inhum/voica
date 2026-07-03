@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-07-03
+
+### Added
+- **Auto-insert** the transcribed text into the active field (synthesizes ⌘V), now the
+  default. The text is still copied to the clipboard as a fallback. A new Settings option
+  under Dictation lets you switch back to the previous behavior (an editable result window).
+
 ## [0.3.2] — 2026-06-30
 
 ### Changed
@@ -43,6 +50,7 @@ All notable changes to this project are documented here. The format is based on
   retention, and Delete all data (guarded by a random phrase).
 - Self-test mode (`--test-all`) and `.dmg` packaging.
 
+[0.4.0]: https://github.com/Inhum/voica/releases/tag/v0.4.0
 [0.3.2]: https://github.com/Inhum/voica/releases/tag/v0.3.2
 [0.3.1]: https://github.com/Inhum/voica/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Inhum/voica/releases/tag/v0.3.0
