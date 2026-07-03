@@ -17,6 +17,13 @@
 - **Интерфейс на русском и английском** — по языку системы.
 - API-ключ хранится в **защищённом файле** (права `0600`, доступен только вам).
 
+## Скриншоты
+
+<p align="center">
+  <img src="docs/settings.png" width="440" alt="Окно настроек">
+  <img src="docs/about.png" width="360" alt="Окно «О программе»">
+</p>
+
 ## Установка
 
 1. Скачайте `Voica-<версия>.dmg` со страницы [Releases](https://github.com/Inhum/voica/releases)

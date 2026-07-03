@@ -34,6 +34,13 @@ and cheap.
 - API key stored in a **protected file** (`0600`, readable only by you) — never in the repo.
 - **Privacy-friendly**: everything stays on your Mac; audio goes only to Groq for transcription.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/settings.png" width="440" alt="Settings window">
+  <img src="docs/about.png" width="360" alt="About window">
+</p>
+
 ## Install
 
 1. Download `Voica-<version>.dmg` from [Releases](https://github.com/Inhum/voica/releases)
