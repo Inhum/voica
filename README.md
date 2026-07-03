@@ -19,14 +19,15 @@
 ---
 
 Built-in dictation on macOS/iOS doesn't add punctuation — no periods, commas, or question
-marks. Voica does: dictate by a hotkey and get clean, punctuated text in your clipboard,
-transcribed via [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`), which is fast
-and cheap.
+marks. Voica does: dictate by a hotkey and get clean, punctuated text inserted right where
+you're typing, transcribed via [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`),
+which is fast and cheap.
 
 ## Features
 
 - **Hotkey dictation** — push-to-talk (hold) or toggle (press to start / stop).
-- Recognized text is **auto-copied to the clipboard** and shown in an editable window.
+- Recognized text is **inserted into the active field** by default (or shown in an editable
+  window — your choice in Settings), and always copied to the clipboard as a fallback.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Automatic language detection** (works for mixed speech).
