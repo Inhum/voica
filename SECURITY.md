@@ -15,8 +15,13 @@ You'll get a response as soon as reasonably possible (this is a spare-time proje
   user. It is sent only to Groq, over HTTPS, in the `Authorization` header.
 - Audio recordings and transcription history stay on your Mac (SQLite + local files).
   Audio is sent to Groq only for transcription.
-- Voica has no backend, no telemetry, and makes no network calls other than to
-  `api.groq.com`.
+- **Update check:** Voica queries the public GitHub Releases API
+  (`api.github.com/repos/Inhum/voica/releases/latest`) to compare versions. The request is
+  anonymous (no token, no personal data) and sends only a `Voica` User-Agent. It runs at most
+  once a day on launch and can be turned off in Settings → Updates. Voica never downloads or
+  installs anything by itself — it only opens the release page in your browser.
+- Voica has no backend and no telemetry. Its only network calls are to `api.groq.com`
+  (transcription) and `api.github.com` (the optional update check).
 
 ## Supported versions
 

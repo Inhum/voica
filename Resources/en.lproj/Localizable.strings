@@ -3,6 +3,9 @@
 "menu.history" = "History…";
 "menu.settings" = "Settings…";
 "menu.about" = "About Voica";
+"menu.checkUpdates" = "Check for Updates…";
+"menu.checkUpdates.checking" = "Checking for Updates…";
+"menu.update.available" = "Download Update %@";
 "menu.quit" = "Quit Voica";
 
 /* Edit menu */
@@ -41,6 +44,18 @@
 /* Common */
 "common.delete" = "Delete";
 "common.cancel" = "Cancel";
+"common.later" = "Later";
+
+/* Updates */
+"update.available.title" = "Update available: %@";
+"update.available.msg" = "You have %1$@. Version %2$@ is available on GitHub.";
+"update.available.download" = "Download";
+"update.uptodate.title" = "You’re up to date";
+"update.uptodate.msg" = "Voica %@ is the latest version.";
+"update.error.title" = "Couldn’t check for updates";
+"update.err.noResponse" = "No response from GitHub.";
+"update.err.http" = "GitHub returned HTTP %d.";
+"update.err.decode" = "Couldn’t parse GitHub’s response.";
 
 /* Settings */
 "settings.title" = "Voica — Settings";
@@ -70,6 +85,8 @@
 "settings.audio.store" = "Keep audio recordings";
 "settings.audio.retentionPrefix" = "Delete audio older than";
 "settings.audio.retentionSuffix" = "days (0 = keep forever)";
+"settings.updates.header" = "Updates";
+"settings.updates.onLaunch" = "Check for updates on launch";
 "settings.data.header" = "Data";
 "settings.data.deleteAll" = "Delete All Data…";
 

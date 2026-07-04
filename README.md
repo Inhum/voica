@@ -32,8 +32,11 @@ which is fast and cheap.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Automatic language detection** (works for mixed speech).
 - **Localized UI** — English and Russian, follows the system language.
+- **Update checks** — optionally checks GitHub for a newer version on launch and points you to
+  the release page. Never downloads or installs anything by itself; can be turned off.
 - API key stored in a **protected file** (`0600`, readable only by you) — never in the repo.
-- **Privacy-friendly**: everything stays on your Mac; audio goes only to Groq for transcription.
+- **Privacy-friendly**: everything stays on your Mac. Audio goes only to Groq for transcription;
+  the only other network call is the optional, anonymous update check to GitHub.
 
 ## Screenshots
 

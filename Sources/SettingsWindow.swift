@@ -21,6 +21,7 @@ final class SettingsWindowController: NSWindowController {
     private var keyPopup: NSPopUpButton!
     private var storeAudioToggle: NSButton!
     private var retentionField: NSTextField!
+    private var checkUpdatesToggle: NSButton!
 
     // (заголовок, keyCode)
     private let modifierChoices: [(String, Int)] = [
@@ -34,7 +35,7 @@ final class SettingsWindowController: NSWindowController {
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 440),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
         window.title = L("settings.title")
@@ -156,6 +157,14 @@ final class SettingsWindowController: NSWindowController {
 
         stack.addArrangedSubview(separator())
 
+        // — Обновления —
+        stack.addArrangedSubview(header(L("settings.updates.header")))
+        checkUpdatesToggle = NSButton(checkboxWithTitle: L("settings.updates.onLaunch"),
+                                      target: self, action: #selector(checkUpdatesChanged))
+        stack.addArrangedSubview(checkUpdatesToggle)
+
+        stack.addArrangedSubview(separator())
+
         // — Данные —
         stack.addArrangedSubview(header(L("settings.data.header")))
         let deleteBtn = NSButton(title: L("settings.data.deleteAll"), target: self, action: #selector(deleteAllData))
@@ -219,6 +228,7 @@ final class SettingsWindowController: NSWindowController {
         outputControl.selectedSegment = (Prefs.outputMode == "window") ? 1 : 0
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
+        checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
     }
 
     private var keyFieldValue: String {
@@ -312,6 +322,10 @@ final class SettingsWindowController: NSWindowController {
 
     @objc private func storeAudioChanged() {
         Prefs.storeAudio = (storeAudioToggle.state == .on)
+    }
+
+    @objc private func checkUpdatesChanged() {
+        Prefs.checkUpdatesOnLaunch = (checkUpdatesToggle.state == .on)
     }
 
     @objc private func retentionChanged() {

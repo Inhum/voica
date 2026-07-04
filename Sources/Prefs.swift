@@ -11,6 +11,8 @@ enum Prefs {
         static let pttKeyCode    = "pttKeyCode"
         static let dictationMode = "dictationMode"   // "ptt" | "toggle"
         static let outputMode    = "outputMode"      // "insert" | "window"
+        static let checkUpdates  = "checkUpdatesOnLaunch"
+        static let lastUpdateCheck = "lastUpdateCheck"
     }
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
@@ -44,9 +46,22 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.outputMode) }
     }
 
+    /// Проверять ли обновления при запуске (анонимный запрос к GitHub). По умолчанию да.
+    static var checkUpdatesOnLaunch: Bool {
+        get { d.object(forKey: Key.checkUpdates) == nil ? true : d.bool(forKey: Key.checkUpdates) }
+        set { d.set(newValue, forKey: Key.checkUpdates) }
+    }
+
+    /// Момент последней проверки обновлений (для троттлинга «раз в сутки»). nil — не проверяли.
+    static var lastUpdateCheck: Date? {
+        get { let t = d.double(forKey: Key.lastUpdateCheck); return t == 0 ? nil : Date(timeIntervalSince1970: t) }
+        set { d.set(newValue?.timeIntervalSince1970 ?? 0, forKey: Key.lastUpdateCheck) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
-        [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode]
+        [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
+         Key.checkUpdates, Key.lastUpdateCheck]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

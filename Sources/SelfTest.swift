@@ -43,6 +43,14 @@ enum SelfTest {
         check("prefs outputMode round-trip", Prefs.outputMode == "window")
         Prefs.outputMode = savedOutput
 
+        // Updater — сравнение версий и нормализация тега
+        check("update isNewer patch", Updater.isNewer("0.4.1", than: "0.4.0"))
+        check("update isNewer minor", Updater.isNewer("0.5.0", than: "0.4.9"))
+        check("update not newer equal", !Updater.isNewer("0.4.0", than: "0.4.0"))
+        check("update not newer older", !Updater.isNewer("0.3.9", than: "0.4.0"))
+        check("update double-digit", Updater.isNewer("0.10.0", than: "0.9.0"))
+        check("update normalize v-prefix", Updater.normalize("v0.5.0") == "0.5.0")
+
         // Hotkey — сопоставление клавиш с флагами
         check("hotkey flag option", HotkeyManager.flag(for: 61) == .option)
         check("hotkey flag command", HotkeyManager.flag(for: 54) == .command)

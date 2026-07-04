@@ -3,6 +3,9 @@
 "menu.history" = "История…";
 "menu.settings" = "Настройки…";
 "menu.about" = "О программе Voica";
+"menu.checkUpdates" = "Проверить обновления…";
+"menu.checkUpdates.checking" = "Проверяю обновления…";
+"menu.update.available" = "Скачать обновление %@";
 "menu.quit" = "Завершить Voica";
 
 /* Меню «Правка» */
@@ -41,6 +44,18 @@
 /* Общее */
 "common.delete" = "Удалить";
 "common.cancel" = "Отмена";
+"common.later" = "Позже";
+
+/* Обновления */
+"update.available.title" = "Доступно обновление: %@";
+"update.available.msg" = "У вас %1$@. На GitHub доступна версия %2$@.";
+"update.available.download" = "Скачать";
+"update.uptodate.title" = "Установлена последняя версия";
+"update.uptodate.msg" = "Voica %@ — актуальная версия.";
+"update.error.title" = "Не удалось проверить обновления";
+"update.err.noResponse" = "Нет ответа от GitHub.";
+"update.err.http" = "GitHub вернул HTTP %d.";
+"update.err.decode" = "Не удалось разобрать ответ GitHub.";
 
 /* Настройки */
 "settings.title" = "Voica — Настройки";
@@ -70,6 +85,8 @@
 "settings.audio.store" = "Хранить аудиозаписи";
 "settings.audio.retentionPrefix" = "Удалять аудио старше";
 "settings.audio.retentionSuffix" = "дней (0 = хранить всегда)";
+"settings.updates.header" = "Обновления";
+"settings.updates.onLaunch" = "Проверять обновления при запуске";
 "settings.data.header" = "Данные";
 "settings.data.deleteAll" = "Удалить все данные…";
 

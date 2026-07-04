@@ -30,6 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pulseTimer: Timer?
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
+    private var updateItem: NSMenuItem!
+    private var isCheckingUpdate = false
+    private var latestUpdate: Update?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
 
@@ -60,6 +64,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if currentAPIKey() == nil {
             settingsWindow.showAndFocusKey()
         }
+
+        maybeCheckForUpdatesOnLaunch()
     }
 
     private func applyHotkeySettings() {
@@ -114,6 +120,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         addItem(to: menu, title: L("menu.history"), action: #selector(showHistory), key: "")
         addItem(to: menu, title: L("menu.settings"), action: #selector(showSettings), key: ",")
         addItem(to: menu, title: L("menu.about"), action: #selector(showAbout), key: "")
+        updateItem = addItem(to: menu, title: L("menu.checkUpdates"),
+                             action: #selector(checkForUpdatesClicked), key: "")
         menu.addItem(.separator())
         let quit = NSMenuItem(title: L("menu.quit"),
                               action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -236,6 +244,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showSettings() { settingsWindow.show() }
 
     @objc private func showAbout() { aboutWindow.show() }
+
+    // MARK: - Обновления
+
+    /// Клик по пункту меню: если апдейт уже найден — открыть страницу, иначе проверить.
+    @objc private func checkForUpdatesClicked() {
+        if let update = latestUpdate {
+            NSWorkspace.shared.open(update.pageURL)
+        } else {
+            checkForUpdates(manual: true)
+        }
+    }
+
+    /// Тихая проверка при запуске: не чаще раза в сутки, без алертов.
+    private func maybeCheckForUpdatesOnLaunch() {
+        guard Prefs.checkUpdatesOnLaunch else { return }
+        if let last = Prefs.lastUpdateCheck, Date().timeIntervalSince(last) < 24 * 3600 { return }
+        checkForUpdates(manual: false)
+    }
+
+    /// manual=true — ручная проверка: показывает статус и алерты.
+    /// manual=false — фоновая: молча меняет пункт меню, если есть новая версия.
+    private func checkForUpdates(manual: Bool) {
+        guard !isCheckingUpdate else { return }
+        isCheckingUpdate = true
+        if manual { updateItem.title = L("menu.checkUpdates.checking") }
+        Prefs.lastUpdateCheck = Date()
+
+        Updater.check { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.isCheckingUpdate = false
+                switch result {
+                case .success(let update?):
+                    self.latestUpdate = update
+                    self.updateItem.title = L("menu.update.available", update.version)
+                    if manual { self.offerUpdate(update) }
+                case .success(nil):
+                    self.latestUpdate = nil
+                    self.updateItem.title = L("menu.checkUpdates")
+                    if manual { self.alert(L("update.uptodate.title"),
+                                           L("update.uptodate.msg", Updater.currentVersion)) }
+                case .failure(let err):
+                    self.latestUpdate = nil
+                    self.updateItem.title = L("menu.checkUpdates")
+                    if manual { self.alert(L("update.error.title"), err.localizedDescription) }
+                }
+            }
+        }
+    }
+
+    private func offerUpdate(_ update: Update) {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = L("update.available.title", update.version)
+        a.informativeText = L("update.available.msg", Updater.currentVersion, update.version)
+        a.addButton(withTitle: L("update.available.download"))
+        a.addButton(withTitle: L("common.later"))
+        if a.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(update.pageURL)
+        }
+    }
 
     private func alert(_ title: String, _ message: String) {
         NSApp.activate(ignoringOtherApps: true)
