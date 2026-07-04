@@ -3,6 +3,12 @@
 // Данные живут вне .app, чтобы переживать обновление:
 //   ~/Library/Application Support/com.ushakov.voica/history.sqlite
 //   ~/Library/Application Support/com.ushakov.voica/audio/*.m4a
+//
+// Потокобезопасность: одно соединение SQLite используется строго через серийную
+// очередь `queue` — весь публичный доступ (запись и чтение) сериализуется, поэтому
+// вызывать методы можно с любого потока. Приватные `_`-методы выполняют реальную
+// работу и предполагают, что уже находятся на очереди (чтобы не было реентерабельного
+// `queue.sync` → дедлока).
 
 import Foundation
 import SQLite3
@@ -23,6 +29,7 @@ final class Store {
     private var db: OpaquePointer?
     private let dir: URL
     private let audioDir: URL
+    private let queue = DispatchQueue(label: "com.ushakov.voica.store")
     // SQLITE_TRANSIENT: sqlite копирует переданные байты (строки живут недолго).
     private static let TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
@@ -51,7 +58,8 @@ final class Store {
               model TEXT
             );
             """)
-        cleanupExpiredAudio()
+        // init однопоточен (singleton ещё никому не виден) — можно звать приватный метод напрямую.
+        _cleanupExpiredAudio()
     }
 
     // MARK: - Запись
@@ -61,6 +69,12 @@ final class Store {
     @discardableResult
     func insert(text: String, language: String?, duration: Double?,
                 model: String?, audioTempURL: URL?) -> Int64? {
+        queue.sync { _insert(text: text, language: language, duration: duration,
+                             model: model, audioTempURL: audioTempURL) }
+    }
+
+    private func _insert(text: String, language: String?, duration: Double?,
+                         model: String?, audioTempURL: URL?) -> Int64? {
         var audioFilename: String?
         if Prefs.storeAudio, let src = audioTempURL {
             let name = "\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString).m4a"
@@ -93,6 +107,10 @@ final class Store {
     // MARK: - Чтение
 
     func all() -> [TranscriptRecord] {
+        queue.sync { _all() }
+    }
+
+    private func _all() -> [TranscriptRecord] {
         let sql = """
             SELECT id, created_at, text, language, duration_sec, audio_filename, model
             FROM transcriptions ORDER BY created_at DESC;
@@ -116,6 +134,8 @@ final class Store {
         return rows
     }
 
+    /// Путь к аудиофайлу записи. Чистая работа с файловой системой (без БД),
+    /// поэтому не требует очереди и безопасна для вызова изнутри `_`-методов.
     func audioURL(for record: TranscriptRecord) -> URL? {
         guard let name = record.audioFilename else { return nil }
         let url = audioDir.appendingPathComponent(name)
@@ -124,14 +144,20 @@ final class Store {
 
     /// Сводка для подтверждения удаления (этап 4).
     func counts() -> (records: Int, audioFiles: Int) {
-        let recs = all()
-        return (recs.count, recs.filter { audioURL(for: $0) != nil }.count)
+        queue.sync {
+            let recs = _all()
+            return (recs.count, recs.filter { audioURL(for: $0) != nil }.count)
+        }
     }
 
     // MARK: - Удаление
 
     func delete(id: Int64) {
-        if let rec = all().first(where: { $0.id == id }), let url = audioURL(for: rec) {
+        queue.sync { _delete(id: id) }
+    }
+
+    private func _delete(id: Int64) {
+        if let rec = _all().first(where: { $0.id == id }), let url = audioURL(for: rec) {
             try? FileManager.default.removeItem(at: url)
         }
         var stmt: OpaquePointer?
@@ -144,14 +170,20 @@ final class Store {
 
     /// Полная очистка (для кнопки Delete all data).
     func deleteAll() {
-        exec("DELETE FROM transcriptions;")
-        if let files = try? FileManager.default.contentsOfDirectory(at: audioDir, includingPropertiesForKeys: nil) {
-            for f in files { try? FileManager.default.removeItem(at: f) }
+        queue.sync {
+            exec("DELETE FROM transcriptions;")
+            if let files = try? FileManager.default.contentsOfDirectory(at: audioDir, includingPropertiesForKeys: nil) {
+                for f in files { try? FileManager.default.removeItem(at: f) }
+            }
         }
     }
 
     /// Удаляет аудио старше retentionDays. Запись и текст остаются, ссылка обнуляется.
     func cleanupExpiredAudio() {
+        queue.sync { _cleanupExpiredAudio() }
+    }
+
+    private func _cleanupExpiredAudio() {
         let days = Prefs.retentionDays
         guard days > 0 else { return }
         let cutoff = Int64(Date().addingTimeInterval(-Double(days) * 86_400).timeIntervalSince1970)
@@ -179,7 +211,7 @@ final class Store {
         sqlite3_finalize(upd)
     }
 
-    // MARK: - Низкоуровневые помощники
+    // MARK: - Низкоуровневые помощники (вызываются уже на очереди)
 
     @discardableResult
     private func exec(_ sql: String) -> Bool {

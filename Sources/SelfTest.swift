@@ -32,6 +32,24 @@ enum SelfTest {
         }
         check("store count unchanged", Store.shared.all().count == before)
 
+        // Store — стресс потокобезопасности: параллельные вставки и чтения с разных потоков.
+        // Без серийной очереди это обращалось бы к одному соединению SQLite из многих потоков.
+        let stressBefore = Store.shared.all().count
+        let idsLock = NSLock()
+        var stressIDs: [Int64] = []
+        DispatchQueue.concurrentPerform(iterations: 50) { i in
+            if let id = Store.shared.insert(text: "__voica_stress__\(i)", language: nil,
+                                            duration: nil, model: "stress", audioTempURL: nil) {
+                idsLock.lock(); stressIDs.append(id); idsLock.unlock()
+            }
+            _ = Store.shared.all()   // чтение одновременно с чужими вставками
+        }
+        check("store concurrent inserts", stressIDs.count == 50)
+        DispatchQueue.concurrentPerform(iterations: stressIDs.count) { i in
+            Store.shared.delete(id: stressIDs[i])
+        }
+        check("store concurrent cleanup", Store.shared.all().count == stressBefore)
+
         // Prefs — round-trip с восстановлением
         let savedDays = Prefs.retentionDays
         Prefs.retentionDays = 7

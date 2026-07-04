@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.1] — 2026-07-04
+
+### Changed
+- Internal: the transcription history store (SQLite) is now fully serialized through a private
+  serial queue, so it is safe to use from any thread. No user-facing changes.
+
 ## [0.5.0] — 2026-07-04
 
 ### Added
@@ -63,6 +69,7 @@ All notable changes to this project are documented here. The format is based on
   retention, and Delete all data (guarded by a random phrase).
 - Self-test mode (`--test-all`) and `.dmg` packaging.
 
+[0.5.1]: https://github.com/Inhum/voica/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Inhum/voica/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Inhum/voica/releases/tag/v0.4.0
 [0.3.2]: https://github.com/Inhum/voica/releases/tag/v0.3.2
