@@ -33,9 +33,13 @@ final class AboutWindowController: NSWindowController {
             stack.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -20),
         ])
 
+        // Настоящая иконка приложения из бандла (та же, что в Finder/Dock), а не SF-символ.
         let icon = NSImageView()
-        icon.image = NSImage(systemSymbolName: "mic.circle.fill", accessibilityDescription: "Voica")
-        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 48, weight: .regular)
+        icon.image = NSApp.applicationIconImage
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 96).isActive = true
         stack.addArrangedSubview(icon)
 
         let name = NSTextField(labelWithString: "Voica")
