@@ -31,6 +31,8 @@ which is fast and cheap.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Automatic language detection** (works for mixed speech).
+- **Vocabulary** — list terms Whisper often mishears (names, jargon, anglicisms) and they're
+  passed as a hint on every dictation to bias spelling.
 - **Localized UI** — English and Russian, follows the system language.
 - **Update checks** — optionally checks GitHub for a newer version on launch and points you to
   the release page. Never downloads or installs anything by itself; can be turned off.
