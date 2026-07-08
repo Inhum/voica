@@ -3,7 +3,7 @@
 
 import Cocoa
 
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NSWindowDelegate {
     /// Вызывается после изменения настроек хоткея, чтобы применить их вживую.
     var onHotkeySettingsChanged: (() -> Void)?
 
@@ -22,6 +22,7 @@ final class SettingsWindowController: NSWindowController {
     private var storeAudioToggle: NSButton!
     private var retentionField: NSTextField!
     private var checkUpdatesToggle: NSButton!
+    private var vocabTextView: NSTextView!
 
     // (заголовок, keyCode)
     private let modifierChoices: [(String, Int)] = [
@@ -35,7 +36,7 @@ final class SettingsWindowController: NSWindowController {
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 650),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
         window.title = L("settings.title")
@@ -43,6 +44,7 @@ final class SettingsWindowController: NSWindowController {
         window.identifier = NSUserInterfaceItemIdentifier("voica-main")
         self.init(window: window)
         buildUI()
+        window.delegate = self
     }
 
     // MARK: - UI
@@ -133,6 +135,33 @@ final class SettingsWindowController: NSWindowController {
         outputHint.font = .systemFont(ofSize: 10)
         outputHint.textColor = .tertiaryLabelColor
         stack.addArrangedSubview(outputHint)
+
+        stack.addArrangedSubview(separator())
+
+        // — Словарь терминов —
+        stack.addArrangedSubview(header(L("settings.vocab.header")))
+
+        let vocabScroll = NSScrollView()
+        vocabScroll.translatesAutoresizingMaskIntoConstraints = false
+        vocabScroll.hasVerticalScroller = true
+        vocabScroll.borderType = .bezelBorder
+        vocabScroll.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        vocabScroll.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        let vtv = NSTextView()
+        vtv.isRichText = false
+        vtv.font = .systemFont(ofSize: 12)
+        vtv.textContainerInset = NSSize(width: 4, height: 4)
+        vtv.autoresizingMask = [.width]
+        vtv.delegate = self
+        vocabScroll.documentView = vtv
+        vocabTextView = vtv
+        stack.addArrangedSubview(vocabScroll)
+
+        let vocabHint = NSTextField(wrappingLabelWithString: L("settings.vocab.hint"))
+        vocabHint.font = .systemFont(ofSize: 10)
+        vocabHint.textColor = .tertiaryLabelColor
+        vocabHint.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        stack.addArrangedSubview(vocabHint)
 
         stack.addArrangedSubview(separator())
 
@@ -229,6 +258,18 @@ final class SettingsWindowController: NSWindowController {
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
+        vocabTextView.string = Prefs.vocabulary
+    }
+
+    /// Словарь сохраняем по потере фокуса полем (NSTextView).
+    func textDidEndEditing(_ notification: Notification) {
+        guard (notification.object as? NSTextView) === vocabTextView else { return }
+        Prefs.vocabulary = vocabTextView.string
+    }
+
+    /// Подстраховка: зафиксировать словарь при закрытии окна, если end-editing не успел.
+    func windowWillClose(_ notification: Notification) {
+        if let s = vocabTextView?.string { Prefs.vocabulary = s }
     }
 
     private var keyFieldValue: String {

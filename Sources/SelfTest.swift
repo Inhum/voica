@@ -78,6 +78,23 @@ enum SelfTest {
         check("groq model", GroqClient.model == "whisper-large-v3-turbo")
         check("groq endpoint", GroqClient.endpoint.host == "api.groq.com")
 
+        // Словарь терминов — подготовка prompt
+        check("prompt empty → nil", GroqClient.promptField(from: "   \n ") == nil)
+        check("prompt trims", GroqClient.promptField(from: "  Kubernetes, Groq  ") == "Kubernetes, Groq")
+        let longVocab = String(repeating: "терм ", count: 500)   // ~2500 символов
+        if let p = GroqClient.promptField(from: longVocab) {
+            check("prompt truncated to budget", p.count <= GroqClient.promptCharBudget)
+            // хвост — от уже обрезанной по пробелам строки (promptField сперва триммит)
+            check("prompt keeps tail", longVocab.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(p))
+        } else {
+            check("prompt truncated to budget", false)
+        }
+
+        let savedVocab = Prefs.vocabulary
+        Prefs.vocabulary = "test-term"
+        check("prefs vocabulary round-trip", Prefs.vocabulary == "test-term")
+        Prefs.vocabulary = savedVocab
+
         print("Итог: \(passed) passed, \(failed) failed")
         return failed == 0
     }

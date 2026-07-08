@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] — 2026-07-08
+
+### Added
+- **Vocabulary.** A new field in Settings → Vocabulary lets you list terms Whisper often
+  mishears (names, jargon, anglicisms). They're passed to Whisper as a `prompt` on every
+  dictation to bias spelling. It's a hint, not a strict rule, and is capped to fit Whisper's
+  prompt budget (the tail is kept).
+
 ## [0.5.1] — 2026-07-04
 
 ### Changed
@@ -69,6 +77,7 @@ All notable changes to this project are documented here. The format is based on
   retention, and Delete all data (guarded by a random phrase).
 - Self-test mode (`--test-all`) and `.dmg` packaging.
 
+[0.6.0]: https://github.com/Inhum/voica/releases/tag/v0.6.0
 [0.5.1]: https://github.com/Inhum/voica/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Inhum/voica/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Inhum/voica/releases/tag/v0.4.0

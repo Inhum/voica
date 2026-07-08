@@ -46,6 +46,18 @@ enum GroqClient {
     static let endpoint = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions")!
     static let model = "whisper-large-v3-turbo"
 
+    /// Бюджет символов для поля `prompt`. Whisper учитывает только последние ~224 токена
+    /// промпта, поэтому длинный словарь режем, сохраняя ХВОСТ. ~800 симв ≈ этот лимит.
+    static let promptCharBudget = 800
+
+    /// Готовит значение `prompt` из пользовательского словаря: тримминг + обрезка по бюджету
+    /// (оставляем хвост). nil — если словарь пустой (тогда поле в запрос не кладём).
+    static func promptField(from vocabulary: String) -> String? {
+        let trimmed = vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed.count <= promptCharBudget ? trimmed : String(trimmed.suffix(promptCharBudget))
+    }
+
     static func transcribe(fileURL: URL,
                            completion: @escaping (Result<Transcription, GroqError>) -> Void) {
         guard let key = currentAPIKey() else { return completion(.failure(.noKey)) }
@@ -56,7 +68,8 @@ enum GroqClient {
         req.httpMethod = "POST"
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        req.httpBody = body(boundary: boundary, audio: audio, filename: fileURL.lastPathComponent)
+        req.httpBody = body(boundary: boundary, audio: audio, filename: fileURL.lastPathComponent,
+                            prompt: promptField(from: Prefs.vocabulary))
         req.timeoutInterval = 120
 
         URLSession.shared.dataTask(with: req) { data, resp, err in
@@ -98,7 +111,7 @@ enum GroqClient {
         }.resume()
     }
 
-    private static func body(boundary: String, audio: Data, filename: String) -> Data {
+    private static func body(boundary: String, audio: Data, filename: String, prompt: String?) -> Data {
         var body = Data()
         func append(_ s: String) { body.append(s.data(using: .utf8)!) }
         func field(_ name: String, _ value: String) {
@@ -117,6 +130,7 @@ enum GroqClient {
         field("response_format", "verbose_json")   // даёт text + language + duration
         field("temperature", "0")
         // language не задаём — Whisper определяет сам (русский + английские вкрапления)
+        if let prompt { field("prompt", prompt) }   // словарь терминов: подсказка написаний
 
         append("--\(boundary)--\r\n")
         return body

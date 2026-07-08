@@ -13,6 +13,7 @@ enum Prefs {
         static let outputMode    = "outputMode"      // "insert" | "window"
         static let checkUpdates  = "checkUpdatesOnLaunch"
         static let lastUpdateCheck = "lastUpdateCheck"
+        static let vocabulary    = "vocabulary"
     }
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
@@ -58,10 +59,17 @@ enum Prefs {
         set { d.set(newValue?.timeIntervalSince1970 ?? 0, forKey: Key.lastUpdateCheck) }
     }
 
+    /// Словарь терминов: строка, которую пользователь заносит в настройках. Подставляется
+    /// в поле `prompt` Whisper, чтобы реже коверкались названия/жаргон/англицизмы. По умолчанию пусто.
+    static var vocabulary: String {
+        get { d.string(forKey: Key.vocabulary) ?? "" }
+        set { d.set(newValue, forKey: Key.vocabulary) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
-         Key.checkUpdates, Key.lastUpdateCheck]
+         Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary]
             .forEach { d.removeObject(forKey: $0) }
     }
 }
