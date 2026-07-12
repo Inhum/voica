@@ -14,6 +14,7 @@ enum Prefs {
         static let checkUpdates  = "checkUpdatesOnLaunch"
         static let lastUpdateCheck = "lastUpdateCheck"
         static let vocabulary    = "vocabulary"
+        static let llmPostProcess = "llmPostProcess"
     }
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
@@ -66,10 +67,17 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.vocabulary) }
     }
 
+    /// Исправлять ли термины из словаря через Groq LLM после распознавания.
+    /// По умолчанию выкл: добавляет ~1–2 с задержки и один запрос к chat-модели.
+    static var llmPostProcess: Bool {
+        get { d.bool(forKey: Key.llmPostProcess) }
+        set { d.set(newValue, forKey: Key.llmPostProcess) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
-         Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary]
+         Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

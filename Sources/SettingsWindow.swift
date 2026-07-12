@@ -23,6 +23,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var retentionField: NSTextField!
     private var checkUpdatesToggle: NSButton!
     private var vocabTextView: NSTextView!
+    private var llmToggle: NSButton!
 
     // (заголовок, keyCode)
     private let modifierChoices: [(String, Int)] = [
@@ -36,7 +37,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 650),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 720),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
         window.title = L("settings.title")
@@ -163,6 +164,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         vocabHint.widthAnchor.constraint(equalToConstant: 424).isActive = true
         stack.addArrangedSubview(vocabHint)
 
+        llmToggle = NSButton(checkboxWithTitle: L("settings.vocab.llm"),
+                             target: self, action: #selector(llmChanged))
+        stack.addArrangedSubview(llmToggle)
+
+        let llmHint = NSTextField(wrappingLabelWithString: L("settings.vocab.llm.hint"))
+        llmHint.font = .systemFont(ofSize: 10)
+        llmHint.textColor = .tertiaryLabelColor
+        llmHint.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        stack.addArrangedSubview(llmHint)
+
         stack.addArrangedSubview(separator())
 
         // — Аудио —
@@ -259,6 +270,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
         vocabTextView.string = Prefs.vocabulary
+        llmToggle.state = Prefs.llmPostProcess ? .on : .off
     }
 
     /// Словарь сохраняем по потере фокуса полем (NSTextView).
@@ -367,6 +379,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func checkUpdatesChanged() {
         Prefs.checkUpdatesOnLaunch = (checkUpdatesToggle.state == .on)
+    }
+
+    @objc private func llmChanged() {
+        Prefs.llmPostProcess = (llmToggle.state == .on)
     }
 
     @objc private func retentionChanged() {

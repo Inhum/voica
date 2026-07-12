@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] — 2026-07-12
+
+### Added
+- **AI term correction (opt-in).** After transcription, a Groq language model
+  (`qwen/qwen3-32b`, no reasoning) reliably fixes garbled vocabulary terms — matching
+  grammatical case and context — in the cases where the Whisper `prompt` hint is powerless
+  (near-homophones of common words, e.g. "voice" → "Voica"). Toggle in Settings → Vocabulary;
+  adds one small extra request (~1–2 s). Fail-open: on any error or timeout the raw
+  transcription is delivered unchanged.
+
 ## [0.6.0] — 2026-07-08
 
 ### Added
@@ -77,6 +87,7 @@ All notable changes to this project are documented here. The format is based on
   retention, and Delete all data (guarded by a random phrase).
 - Self-test mode (`--test-all`) and `.dmg` packaging.
 
+[0.7.0]: https://github.com/Inhum/voica/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Inhum/voica/releases/tag/v0.6.0
 [0.5.1]: https://github.com/Inhum/voica/releases/tag/v0.5.1
 [0.5.0]: https://github.com/Inhum/voica/releases/tag/v0.5.0

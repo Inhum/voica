@@ -20,8 +20,12 @@ You'll get a response as soon as reasonably possible (this is a spare-time proje
   anonymous (no token, no personal data) and sends only a `Voica` User-Agent. It runs at most
   once a day on launch and can be turned off in Settings → Updates. Voica never downloads or
   installs anything by itself — it only opens the release page in your browser.
+- **AI term correction (optional, off by default):** when enabled in Settings → Vocabulary,
+  the transcribed text is additionally sent to a Groq chat model (same `api.groq.com`, same
+  BYO key) to fix garbled vocabulary terms. No extra parties are involved.
 - Voica has no backend and no telemetry. Its only network calls are to `api.groq.com`
-  (transcription) and `api.github.com` (the optional update check).
+  (transcription, and the optional AI term correction) and `api.github.com` (the optional
+  update check).
 
 ## Supported versions
 

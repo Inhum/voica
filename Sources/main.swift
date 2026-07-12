@@ -212,30 +212,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         GroqClient.transcribe(fileURL: rec.url) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
-                self.state = .idle
                 switch result {
                 case .success(let t):
                     if t.text.isEmpty {
+                        self.state = .idle
                         try? FileManager.default.removeItem(at: rec.url)
                         self.alert(L("alert.empty.title"), L("alert.empty.msg"))
-                    } else {
-                        Store.shared.insert(text: t.text, language: t.language,
-                                            duration: t.duration ?? rec.duration,
-                                            model: GroqClient.model, audioTempURL: rec.url)
-                        try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
-                        if Prefs.outputMode == "window" {
-                            self.resultWindow.show(t)   // старое поведение: редактируемое окно
-                        } else {
-                            AutoInsert.insert(t.text)   // по умолчанию: вставить в активное поле
+                    } else if Prefs.llmPostProcess {
+                        // Состояние остаётся .transcribing, пока LLM исправляет термины.
+                        // postProcess fail-open: при любой ошибке вернёт исходный текст.
+                        GroqClient.postProcess(text: t.text) { [weak self] final in
+                            DispatchQueue.main.async {
+                                self?.deliver(text: final, transcription: t, rec: rec)
+                            }
                         }
-                        self.historyWindow.refreshIfVisible()
+                    } else {
+                        self.deliver(text: t.text, transcription: t, rec: rec)
                     }
                 case .failure(let err):
+                    self.state = .idle
                     try? FileManager.default.removeItem(at: rec.url)
                     self.alert(L("alert.transcribe.title"), err.localizedDescription)
                 }
             }
         }
+    }
+
+    /// Финальная доставка результата: история + буфер/вставка или окно.
+    private func deliver(text: String, transcription t: Transcription,
+                         rec: (url: URL, duration: TimeInterval)) {
+        state = .idle
+        Store.shared.insert(text: text, language: t.language,
+                            duration: t.duration ?? rec.duration,
+                            model: GroqClient.model, audioTempURL: rec.url)
+        try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
+        if Prefs.outputMode == "window" {
+            resultWindow.show(Transcription(text: text, language: t.language, duration: t.duration))
+        } else {
+            AutoInsert.insert(text)   // по умолчанию: вставить в активное поле
+        }
+        historyWindow.refreshIfVisible()
     }
 
     // MARK: - Прочие пункты меню (заглушки до следующих этапов)

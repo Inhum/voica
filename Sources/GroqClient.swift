@@ -94,6 +94,72 @@ enum GroqClient {
         }.resume()
     }
 
+    // MARK: - LLM-постобработка (исправление терминов из словаря)
+
+    static let chatEndpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
+    static let postProcessModel = "qwen/qwen3-32b"
+
+    /// Промпт для исправления терминов. nil — словарь пуст, постобработка не нужна.
+    static func postProcessPrompt(text: String, vocabulary: String) -> String? {
+        let vocab = vocabulary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !vocab.isEmpty else { return nil }
+        return """
+        Ты — корректор диктовки. Ниже словарь терминов пользователя и распознанный текст. \
+        В тексте могут встречаться искажённые варианты этих терминов (речь распознавалась на слух). \
+        Верни ТОЛЬКО исправленный текст: замени искажённые варианты на правильные написания из словаря, \
+        согласуя с падежом и контекстом. Если под искажение подходят несколько терминов словаря — \
+        выбирай наиболее близкий по ЗВУЧАНИЮ к тому, что записано (например, «кубер стил» звучит как \
+        kubectl, а не Kubernetes). Если слово в тексте уже совпадает со словарным термином \
+        (пусть и в другом регистре, например с заглавной буквы) — оно правильное: не трогай его \
+        и не меняй его регистр. Больше ничего не меняй — ни слова, ни пунктуацию. \
+        Если исправлять нечего — верни текст как есть.
+
+        СЛОВАРЬ: \(vocab)
+
+        ТЕКСТ: \(text)
+        """
+    }
+
+    /// Исправляет искажённые термины из словаря через Groq LLM (qwen3-32b, без reasoning).
+    /// Fail-open: при любой ошибке/таймауте возвращает исходный текст —
+    /// диктовка никогда не блокируется постобработкой.
+    static func postProcess(text: String, completion: @escaping (String) -> Void) {
+        guard let key = currentAPIKey(),
+              let prompt = postProcessPrompt(text: text, vocabulary: Prefs.vocabulary) else {
+            return completion(text)
+        }
+        let payload: [String: Any] = [
+            "model": postProcessModel,
+            "temperature": 0,
+            "reasoning_effort": "none",   // qwen3 — thinking-модель; размышления тут не нужны
+            "max_completion_tokens": 4096,
+            "messages": [["role": "user", "content": prompt]],
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            return completion(text)
+        }
+        var req = URLRequest(url: chatEndpoint)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        req.timeoutInterval = 20
+
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            guard err == nil,
+                  let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let data = data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let choices = obj["choices"] as? [[String: Any]],
+                  let msg = choices.first?["message"] as? [String: Any],
+                  let content = msg["content"] as? String else {
+                return completion(text)   // fail-open
+            }
+            let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            completion(cleaned.isEmpty ? text : cleaned)
+        }.resume()
+    }
+
     /// Проверка ключа через лёгкий GET /models. completion(nil) — ключ рабочий,
     /// иначе строка с описанием проблемы.
     static func validateKey(_ key: String, completion: @escaping (String?) -> Void) {

@@ -95,6 +95,22 @@ enum SelfTest {
         check("prefs vocabulary round-trip", Prefs.vocabulary == "test-term")
         Prefs.vocabulary = savedVocab
 
+        // LLM-постобработка — сборка промпта и настройка
+        check("postprocess empty vocab → nil",
+              GroqClient.postProcessPrompt(text: "привет", vocabulary: "  \n") == nil)
+        if let p = GroqClient.postProcessPrompt(text: "тест кубер стил", vocabulary: "kubectl, Voica") {
+            check("postprocess prompt has vocab", p.contains("kubectl, Voica"))
+            check("postprocess prompt has text", p.contains("тест кубер стил"))
+        } else {
+            check("postprocess prompt has vocab", false)
+        }
+        check("postprocess model", GroqClient.postProcessModel == "qwen/qwen3-32b")
+
+        let savedPP = Prefs.llmPostProcess
+        Prefs.llmPostProcess = true
+        check("prefs llmPostProcess round-trip", Prefs.llmPostProcess == true)
+        Prefs.llmPostProcess = savedPP
+
         print("Итог: \(passed) passed, \(failed) failed")
         return failed == 0
     }
