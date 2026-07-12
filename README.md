@@ -96,6 +96,11 @@ Each user gets a free key at [console.groq.com](https://console.groq.com); usage
 to [Groq's Terms of Use](https://groq.com/terms-of-use). Free-tier limits (whisper-large-v3-turbo):
 20 req/min, 2000/day, 7200 audio-seconds/hour — far more than dictation needs.
 
+**If you enable AI term correction** (Settings → Vocabulary), Voica also calls the chat model
+`qwen/qwen3-32b`. If your Groq organization restricts model access, allow this model at
+console.groq.com → Settings → Limits — otherwise the correction silently falls back to the
+raw transcription (fail-open by design).
+
 ## Build from source
 
 Only Command Line Tools are required (`xcode-select --install`); full Xcode is not needed.
