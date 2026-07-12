@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] — 2026-07-12
+
+### Changed
+- **Settings reorganized into tabs** (toolbar-style, like the system Settings app):
+  General (API key, updates), Dictation (mode, key, output), Vocabulary (terms, AI correction),
+  Data (audio, retention, delete). The old single-page window had outgrown a 13" screen.
+
+### Added
+- **Model availability check.** When you enable "Fix terms with AI" (and whenever Settings
+  opens with it on), Voica pings the chat model and shows a native status: a green checkmark
+  if it's available, or a warning with a hint to allow the model in your Groq console if it's
+  blocked — no need to read the docs to find out why correction isn't working.
+- **Vocabulary character counter.** A live `N / 800` counter under the vocabulary field
+  (turns orange over the Whisper prompt budget; the tail is what gets sent).
+- **Reset Settings to Defaults** (General tab). Returns all settings to defaults while keeping
+  the API key, history, audio and vocabulary — unlike Delete All Data, which wipes everything.
+
 ## [0.7.0] — 2026-07-12
 
 ### Added
@@ -87,6 +104,7 @@ All notable changes to this project are documented here. The format is based on
   retention, and Delete all data (guarded by a random phrase).
 - Self-test mode (`--test-all`) and `.dmg` packaging.
 
+[0.8.0]: https://github.com/Inhum/voica/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Inhum/voica/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Inhum/voica/releases/tag/v0.6.0
 [0.5.1]: https://github.com/Inhum/voica/releases/tag/v0.5.1

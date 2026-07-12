@@ -59,6 +59,10 @@
 
 /* Settings */
 "settings.title" = "Voica — Settings";
+"settings.tab.general" = "General";
+"settings.tab.dictation" = "Dictation";
+"settings.tab.vocab" = "Vocabulary";
+"settings.tab.data" = "Data";
 "settings.key.header" = "Groq API Key";
 "settings.key.show" = "Show";
 "settings.key.save" = "Save";
@@ -85,12 +89,21 @@
 "settings.vocab.hint" = "Terms Whisper often mishears — names, jargon, anglicisms. Applied to every dictation as a hint (not a strict rule). E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта.";
 "settings.vocab.llm" = "Fix terms with AI (extra Groq request)";
 "settings.vocab.llm.hint" = "After transcription, a Groq language model reliably fixes garbled vocabulary terms, matching grammatical case and context. Adds ~1–2 s. If the request fails, the raw text is used.";
+"settings.vocab.llm.checking" = "Checking model availability…";
+"settings.vocab.llm.ok" = "Model available";
+"settings.vocab.llm.blocked" = "Model %@ is blocked — allow it at console.groq.com → Settings → Limits";
 "settings.audio.header" = "Audio";
 "settings.audio.store" = "Keep audio recordings";
 "settings.audio.retentionPrefix" = "Delete audio older than";
 "settings.audio.retentionSuffix" = "days (0 = keep forever)";
 "settings.updates.header" = "Updates";
 "settings.updates.onLaunch" = "Check for updates on launch";
+"settings.reset.button" = "Reset Settings to Defaults…";
+"settings.reset.hint" = "Returns all settings to their defaults. Your API key, history, audio and vocabulary are kept.";
+"settings.reset.title" = "Reset all settings?";
+"settings.reset.msg" = "All settings return to their defaults. Your API key, dictation history, audio recordings and vocabulary are kept.";
+"settings.reset.confirm" = "Reset";
+"settings.vocab.counter" = "%1$d / %2$d characters";
 "settings.data.header" = "Data";
 "settings.data.deleteAll" = "Delete All Data…";
 

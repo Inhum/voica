@@ -160,6 +160,39 @@ enum GroqClient {
         }.resume()
     }
 
+    /// Проверка доступности chat-модели для ИИ-исправления: лёгкий запрос к
+    /// chat completions. completion(nil) — модель доступна, иначе описание проблемы
+    /// (403 — модель заблокирована в Groq-org, даём подсказку куда идти).
+    static func validateChatModel(_ completion: @escaping (String?) -> Void) {
+        guard let key = currentAPIKey() else { return completion(L("groq.err.noKey")) }
+        let payload: [String: Any] = [
+            "model": postProcessModel,
+            "temperature": 0,
+            "reasoning_effort": "none",
+            "max_completion_tokens": 8,
+            "messages": [["role": "user", "content": "ok"]],
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            return completion(L("groq.validate.noResponse"))
+        }
+        var req = URLRequest(url: chatEndpoint)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = body
+        req.timeoutInterval = 15
+        URLSession.shared.dataTask(with: req) { _, resp, err in
+            if let err = err { return completion(err.localizedDescription) }
+            guard let http = resp as? HTTPURLResponse else { return completion(L("groq.validate.noResponse")) }
+            switch http.statusCode {
+            case 200:  completion(nil)
+            case 403:  completion(L("settings.vocab.llm.blocked", postProcessModel))
+            case 401:  completion(L("groq.validate.rejected"))
+            default:   completion(L("groq.validate.http", http.statusCode))
+            }
+        }.resume()
+    }
+
     /// Проверка ключа через лёгкий GET /models. completion(nil) — ключ рабочий,
     /// иначе строка с описанием проблемы.
     static func validateKey(_ key: String, completion: @escaping (String?) -> Void) {

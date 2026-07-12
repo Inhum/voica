@@ -1,5 +1,7 @@
-// Окно настроек: API-ключ (защищённый файл), режим/клавиша диктовки, хранение аудио,
-// полное удаление данных с подтверждением случайной фразой.
+// Окно настроек: вкладки в стиле системных настроек macOS (toolbar-style, как Tailscale).
+// General — ключ Groq и обновления; Dictation — режим/клавиша/вывод;
+// Vocabulary — словарь и ИИ-исправление (с проверкой доступности модели);
+// Data — аудио и полное удаление данных (с подтверждением случайной фразой).
 
 import Cocoa
 
@@ -7,23 +9,35 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     /// Вызывается после изменения настроек хоткея, чтобы применить их вживую.
     var onHotkeySettingsChanged: (() -> Void)?
 
+    // General
     private var secureKeyField: NSSecureTextField!
     private var plainKeyField: NSTextField!
     private var showKeyToggle: NSButton!
     private var keyStatusLabel: NSTextField!
     private var statusIcon: NSImageView!
     private var statusSpinner: NSProgressIndicator!
+    private var checkUpdatesToggle: NSButton!
 
-    private enum StatusKind { case neutral, success, error }
-
+    // Dictation
     private var modeControl: NSSegmentedControl!
     private var outputControl: NSSegmentedControl!
     private var keyPopup: NSPopUpButton!
+
+    // Vocabulary
+    private var vocabTextView: NSTextView!
+    private var vocabCounter: NSTextField!
+    private var llmToggle: NSButton!
+    private var llmStatusLabel: NSTextField!
+    private var llmStatusIcon: NSImageView!
+    private var llmSpinner: NSProgressIndicator!
+
+    // Data
     private var storeAudioToggle: NSButton!
     private var retentionField: NSTextField!
-    private var checkUpdatesToggle: NSButton!
-    private var vocabTextView: NSTextView!
-    private var llmToggle: NSButton!
+
+    private var tabs: NSTabViewController!
+
+    private enum StatusKind { case neutral, success, error, warning }
 
     // (заголовок, keyCode)
     private let modifierChoices: [(String, Int)] = [
@@ -37,36 +51,69 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 720),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 300),
             styleMask: [.titled, .closable],
             backing: .buffered, defer: false)
         window.title = L("settings.title")
         window.isReleasedWhenClosed = false
         window.identifier = NSUserInterfaceItemIdentifier("voica-main")
+        window.toolbarStyle = .preference
         self.init(window: window)
         buildUI()
         window.delegate = self
     }
 
-    // MARK: - UI
+    // MARK: - Вкладки
 
     private func buildUI() {
-        guard let content = window?.contentView else { return }
+        tabs = NSTabViewController()
+        tabs.tabStyle = .toolbar
+        tabs.canPropagateSelectedChildViewControllerTitle = false   // держим общий заголовок окна
 
+        addTab(L("settings.tab.general"),   symbol: "gearshape",             view: buildGeneralTab())
+        addTab(L("settings.tab.dictation"), symbol: "mic",                   view: buildDictationTab())
+        addTab(L("settings.tab.vocab"),     symbol: "character.book.closed", view: buildVocabularyTab())
+        addTab(L("settings.tab.data"),      symbol: "internaldrive",         view: buildDataTab())
+
+        window?.contentViewController = tabs
+    }
+
+    private func addTab(_ label: String, symbol: String, view: NSView) {
+        let vc = NSViewController()
+        vc.view = view
+        view.layoutSubtreeIfNeeded()
+        vc.preferredContentSize = view.fittingSize   // окно меняет высоту под вкладку
+        let item = NSTabViewItem(viewController: vc)
+        item.label = label
+        item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
+        tabs.addTabViewItem(item)
+    }
+
+    /// Контейнер вкладки: вертикальный стек с полями 18pt, ширина контента 424.
+    private func tabContainer() -> (NSView, NSStackView) {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.widthAnchor.constraint(equalToConstant: 460).isActive = true
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
-        content.addSubview(stack)
+        container.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 18),
-            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -18),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -18),
+            stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 18),
+            stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -18),
+            stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -18),
         ])
+        return (container, stack)
+    }
 
-        // — API-ключ —
+    // MARK: - Вкладка General (ключ + обновления)
+
+    private func buildGeneralTab() -> NSView {
+        let (container, stack) = tabContainer()
+
         stack.addArrangedSubview(header(L("settings.key.header")))
 
         secureKeyField = NSSecureTextField()
@@ -86,34 +133,39 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         let saveBtn = NSButton(title: L("settings.key.save"), target: self, action: #selector(saveKey))
         let testBtn = NSButton(title: L("settings.key.test"), target: self, action: #selector(testKey))
-        statusSpinner = NSProgressIndicator()
-        statusSpinner.style = .spinning
-        statusSpinner.controlSize = .small
-        statusSpinner.isDisplayedWhenStopped = false
-        statusSpinner.translatesAutoresizingMaskIntoConstraints = false
-        statusSpinner.widthAnchor.constraint(equalToConstant: 16).isActive = true
-        statusSpinner.heightAnchor.constraint(equalToConstant: 16).isActive = true
-
-        statusIcon = NSImageView()
-        statusIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
-        statusIcon.isHidden = true
-
-        keyStatusLabel = NSTextField(labelWithString: "")
-        keyStatusLabel.font = .systemFont(ofSize: 11)
-        keyStatusLabel.textColor = .secondaryLabelColor
+        statusSpinner = makeSpinner()
+        statusIcon = makeStatusIcon()
+        keyStatusLabel = makeStatusLabel()
 
         let keyBtnRow = NSStackView(views: [saveBtn, testBtn, statusSpinner, statusIcon, keyStatusLabel])
         keyBtnRow.spacing = 6
         stack.addArrangedSubview(keyBtnRow)
 
-        let hint = NSTextField(labelWithString: L("settings.key.hint"))
-        hint.font = .systemFont(ofSize: 10)
-        hint.textColor = .tertiaryLabelColor
+        let hint = makeHint(L("settings.key.hint"))
         stack.addArrangedSubview(hint)
 
         stack.addArrangedSubview(separator())
 
-        // — Диктовка —
+        stack.addArrangedSubview(header(L("settings.updates.header")))
+        checkUpdatesToggle = NSButton(checkboxWithTitle: L("settings.updates.onLaunch"),
+                                      target: self, action: #selector(checkUpdatesChanged))
+        stack.addArrangedSubview(checkUpdatesToggle)
+
+        stack.addArrangedSubview(separator())
+
+        let resetBtn = NSButton(title: L("settings.reset.button"), target: self,
+                                action: #selector(resetSettings))
+        stack.addArrangedSubview(resetBtn)
+        stack.addArrangedSubview(makeHint(L("settings.reset.hint")))
+
+        return container
+    }
+
+    // MARK: - Вкладка Dictation (режим / клавиша / вывод)
+
+    private func buildDictationTab() -> NSView {
+        let (container, stack) = tabContainer()
+
         stack.addArrangedSubview(header(L("settings.dictation.header")))
 
         modeControl = NSSegmentedControl(labels: [L("settings.mode.ptt"), L("settings.mode.toggle")],
@@ -132,14 +184,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
                                            action: #selector(outputChanged))
         stack.addArrangedSubview(labeledRow(L("settings.output.label"), outputControl))
 
-        let outputHint = NSTextField(labelWithString: L("settings.output.hint"))
-        outputHint.font = .systemFont(ofSize: 10)
-        outputHint.textColor = .tertiaryLabelColor
-        stack.addArrangedSubview(outputHint)
+        stack.addArrangedSubview(makeHint(L("settings.output.hint")))
 
-        stack.addArrangedSubview(separator())
+        return container
+    }
 
-        // — Словарь терминов —
+    // MARK: - Вкладка Vocabulary (словарь + ИИ-исправление)
+
+    private func buildVocabularyTab() -> NSView {
+        let (container, stack) = tabContainer()
+
         stack.addArrangedSubview(header(L("settings.vocab.header")))
 
         let vocabScroll = NSScrollView()
@@ -158,25 +212,34 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         vocabTextView = vtv
         stack.addArrangedSubview(vocabScroll)
 
-        let vocabHint = NSTextField(wrappingLabelWithString: L("settings.vocab.hint"))
-        vocabHint.font = .systemFont(ofSize: 10)
-        vocabHint.textColor = .tertiaryLabelColor
-        vocabHint.widthAnchor.constraint(equalToConstant: 424).isActive = true
-        stack.addArrangedSubview(vocabHint)
+        vocabCounter = NSTextField(labelWithString: "")
+        vocabCounter.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        vocabCounter.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(vocabCounter)
+
+        stack.addArrangedSubview(makeHint(L("settings.vocab.hint")))
 
         llmToggle = NSButton(checkboxWithTitle: L("settings.vocab.llm"),
                              target: self, action: #selector(llmChanged))
         stack.addArrangedSubview(llmToggle)
 
-        let llmHint = NSTextField(wrappingLabelWithString: L("settings.vocab.llm.hint"))
-        llmHint.font = .systemFont(ofSize: 10)
-        llmHint.textColor = .tertiaryLabelColor
-        llmHint.widthAnchor.constraint(equalToConstant: 424).isActive = true
-        stack.addArrangedSubview(llmHint)
+        llmSpinner = makeSpinner()
+        llmStatusIcon = makeStatusIcon()
+        llmStatusLabel = makeStatusLabel()
+        let llmStatusRow = NSStackView(views: [llmSpinner, llmStatusIcon, llmStatusLabel])
+        llmStatusRow.spacing = 6
+        stack.addArrangedSubview(llmStatusRow)
 
-        stack.addArrangedSubview(separator())
+        stack.addArrangedSubview(makeHint(L("settings.vocab.llm.hint")))
 
-        // — Аудио —
+        return container
+    }
+
+    // MARK: - Вкладка Data (аудио + удаление)
+
+    private func buildDataTab() -> NSView {
+        let (container, stack) = tabContainer()
+
         stack.addArrangedSubview(header(L("settings.audio.header")))
 
         storeAudioToggle = NSButton(checkboxWithTitle: L("settings.audio.store"),
@@ -197,20 +260,15 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         stack.addArrangedSubview(separator())
 
-        // — Обновления —
-        stack.addArrangedSubview(header(L("settings.updates.header")))
-        checkUpdatesToggle = NSButton(checkboxWithTitle: L("settings.updates.onLaunch"),
-                                      target: self, action: #selector(checkUpdatesChanged))
-        stack.addArrangedSubview(checkUpdatesToggle)
-
-        stack.addArrangedSubview(separator())
-
-        // — Данные —
         stack.addArrangedSubview(header(L("settings.data.header")))
         let deleteBtn = NSButton(title: L("settings.data.deleteAll"), target: self, action: #selector(deleteAllData))
         deleteBtn.hasDestructiveAction = true
         stack.addArrangedSubview(deleteBtn)
+
+        return container
     }
+
+    // MARK: - UI-помощники
 
     private func header(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text)
@@ -236,10 +294,66 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         return row
     }
 
+    private func makeHint(_ text: String) -> NSTextField {
+        let hint = NSTextField(wrappingLabelWithString: text)
+        hint.font = .systemFont(ofSize: 10)
+        hint.textColor = .tertiaryLabelColor
+        hint.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        return hint
+    }
+
+    private func makeSpinner() -> NSProgressIndicator {
+        let s = NSProgressIndicator()
+        s.style = .spinning
+        s.controlSize = .small
+        s.isDisplayedWhenStopped = false
+        s.translatesAutoresizingMaskIntoConstraints = false
+        s.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        s.heightAnchor.constraint(equalToConstant: 16).isActive = true
+        return s
+    }
+
+    private func makeStatusIcon() -> NSImageView {
+        let icon = NSImageView()
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        icon.isHidden = true
+        return icon
+    }
+
+    private func makeStatusLabel() -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.font = .systemFont(ofSize: 11)
+        label.textColor = .secondaryLabelColor
+        return label
+    }
+
+    private func applyStatus(icon: NSImageView, spinner: NSProgressIndicator,
+                             label: NSTextField, text: String, kind: StatusKind) {
+        spinner.stopAnimation(nil)
+        label.stringValue = text
+        switch kind {
+        case .neutral:
+            icon.isHidden = true
+        case .success:
+            icon.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
+            icon.contentTintColor = .systemGreen
+            icon.isHidden = false
+        case .error:
+            icon.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
+            icon.contentTintColor = .systemRed
+            icon.isHidden = false
+        case .warning:
+            icon.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+            icon.contentTintColor = .systemOrange
+            icon.isHidden = false
+        }
+    }
+
     // MARK: - Показ / загрузка значений
 
     func showAndFocusKey() {
         populate()
+        tabs.selectedTabViewItemIndex = 0   // General — там ключ
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         showWindow(nil)
@@ -259,7 +373,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         let key = KeyStore.load() ?? ""
         secureKeyField.stringValue = key
         plainKeyField.stringValue = key
-        setStatus(key.isEmpty ? L("settings.key.status.none") : L("settings.key.status.saved"), .neutral)
+        setKeyStatus(key.isEmpty ? L("settings.key.status.none") : L("settings.key.status.saved"), .neutral)
 
         modeControl.selectedSegment = (Prefs.dictationMode == "toggle") ? 1 : 0
         if let idx = modifierChoices.firstIndex(where: { $0.1 == Prefs.pttKeyCode }) {
@@ -270,7 +384,22 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
         vocabTextView.string = Prefs.vocabulary
+        updateVocabCounter()
         llmToggle.state = Prefs.llmPostProcess ? .on : .off
+        if Prefs.llmPostProcess { verifyChatModel() } else { clearLLMStatus() }
+    }
+
+    /// Живой счётчик символов словаря относительно бюджета prompt.
+    func textDidChange(_ notification: Notification) {
+        guard (notification.object as? NSTextView) === vocabTextView else { return }
+        updateVocabCounter()
+    }
+
+    private func updateVocabCounter() {
+        let n = vocabTextView.string.count
+        let budget = GroqClient.promptCharBudget
+        vocabCounter.stringValue = L("settings.vocab.counter", n, budget)
+        vocabCounter.textColor = n > budget ? .systemOrange : .tertiaryLabelColor
     }
 
     /// Словарь сохраняем по потере фокуса полем (NSTextView).
@@ -289,24 +418,11 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func setStatus(_ text: String, _ kind: StatusKind = .neutral) {
-        statusSpinner.stopAnimation(nil)
-        keyStatusLabel.stringValue = text
-        switch kind {
-        case .neutral:
-            statusIcon.isHidden = true
-        case .success:
-            statusIcon.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
-            statusIcon.contentTintColor = .systemGreen
-            statusIcon.isHidden = false
-        case .error:
-            statusIcon.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
-            statusIcon.contentTintColor = .systemRed
-            statusIcon.isHidden = false
-        }
+    private func setKeyStatus(_ text: String, _ kind: StatusKind = .neutral) {
+        applyStatus(icon: statusIcon, spinner: statusSpinner, label: keyStatusLabel, text: text, kind: kind)
     }
 
-    private func setChecking(_ text: String) {
+    private func setKeyChecking(_ text: String) {
         statusIcon.isHidden = true
         keyStatusLabel.stringValue = text
         statusSpinner.startAnimation(nil)
@@ -329,35 +445,35 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     @objc private func saveKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            setStatus(L("settings.key.status.empty"), .error)
+            setKeyStatus(L("settings.key.status.empty"), .error)
             return
         }
         if KeyStore.save(key) {
-            setStatus(L("settings.key.status.savedNow"), .success)
+            setKeyStatus(L("settings.key.status.savedNow"), .success)
         } else {
-            setStatus(L("settings.key.status.saveFailed"), .error)
+            setKeyStatus(L("settings.key.status.saveFailed"), .error)
         }
     }
 
     @objc private func testKey() {
         let key = keyFieldValue
         guard !key.isEmpty else {
-            setStatus(L("settings.key.status.empty"), .error)
+            setKeyStatus(L("settings.key.status.empty"), .error)
             return
         }
-        setChecking(L("settings.key.status.checking"))
+        setKeyChecking(L("settings.key.status.checking"))
         GroqClient.validateKey(key) { [weak self] problem in
             DispatchQueue.main.async {
                 if let problem {
-                    self?.setStatus(L("settings.key.status.invalid", problem), .error)
+                    self?.setKeyStatus(L("settings.key.status.invalid", problem), .error)
                 } else {
-                    self?.setStatus(L("settings.key.status.valid"), .success)
+                    self?.setKeyStatus(L("settings.key.status.valid"), .success)
                 }
             }
         }
     }
 
-    // MARK: - Действия: диктовка / аудио
+    // MARK: - Действия: диктовка / аудио / обновления
 
     @objc private func modeChanged() {
         Prefs.dictationMode = (modeControl.selectedSegment == 1) ? "toggle" : "ptt"
@@ -381,13 +497,57 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         Prefs.checkUpdatesOnLaunch = (checkUpdatesToggle.state == .on)
     }
 
-    @objc private func llmChanged() {
-        Prefs.llmPostProcess = (llmToggle.state == .on)
-    }
-
     @objc private func retentionChanged() {
         Prefs.retentionDays = max(0, retentionField.integerValue)
         retentionField.integerValue = Prefs.retentionDays
+    }
+
+    // MARK: - Действия: ИИ-исправление (verify доступности модели)
+
+    @objc private func llmChanged() {
+        Prefs.llmPostProcess = (llmToggle.state == .on)
+        if Prefs.llmPostProcess { verifyChatModel() } else { clearLLMStatus() }
+    }
+
+    private func verifyChatModel() {
+        llmStatusIcon.isHidden = true
+        llmStatusLabel.stringValue = L("settings.vocab.llm.checking")
+        llmSpinner.startAnimation(nil)
+        GroqClient.validateChatModel { [weak self] problem in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let problem {
+                    self.applyStatus(icon: self.llmStatusIcon, spinner: self.llmSpinner,
+                                     label: self.llmStatusLabel, text: problem, kind: .warning)
+                } else {
+                    self.applyStatus(icon: self.llmStatusIcon, spinner: self.llmSpinner,
+                                     label: self.llmStatusLabel,
+                                     text: L("settings.vocab.llm.ok"), kind: .success)
+                }
+            }
+        }
+    }
+
+    private func clearLLMStatus() {
+        llmSpinner.stopAnimation(nil)
+        llmStatusIcon.isHidden = true
+        llmStatusLabel.stringValue = ""
+    }
+
+    // MARK: - Сброс настроек (ключ, история и аудио не трогаются)
+
+    @objc private func resetSettings() {
+        let alert = NSAlert()
+        alert.messageText = L("settings.reset.title")
+        alert.informativeText = L("settings.reset.msg")
+        alert.addButton(withTitle: L("settings.reset.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let vocab = Prefs.vocabulary   // словарь — пользовательский контент, не настройка
+        Prefs.reset()
+        Prefs.vocabulary = vocab
+        populate()
+        onHotkeySettingsChanged?()
     }
 
     // MARK: - Delete all data

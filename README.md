@@ -32,8 +32,10 @@ which is fast and cheap.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Automatic language detection** (works for mixed speech).
 - **Vocabulary** — list terms Whisper often mishears (names, jargon, anglicisms) and they're
-  passed as a hint on every dictation to bias spelling. Optionally, an **AI pass** (Groq LLM)
-  reliably fixes the terms that still come out garbled — matching grammatical case and context.
+  passed as a hint on every dictation to bias spelling. Soft limit ~800 characters (Whisper
+  only reads the last ~224 tokens of the hint; a live counter in Settings shows the budget).
+  Optionally, an **AI pass** (Groq LLM) reliably fixes the terms that still come out
+  garbled — matching grammatical case and context.
 - **Localized UI** — English and Russian, follows the system language.
 - **Update checks** — optionally checks GitHub for a newer version on launch and points you to
   the release page. Never downloads or installs anything by itself; can be turned off.
@@ -44,7 +46,8 @@ which is fast and cheap.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/settings.png" width="440" alt="Settings window">
+  <img src="docs/settings-general.png" width="440" alt="Settings — General">
+  <img src="docs/settings-vocabulary.png" width="440" alt="Settings — Vocabulary">
   <img src="docs/about.png" width="360" alt="About window">
 </p>
 
@@ -77,8 +80,11 @@ The menu-bar icon reflects state: idle → recording (pulsing) → sending to Gr
 
 ## Settings
 
-API key (with a Test button), dictation mode (push-to-talk / toggle), the key, audio
-storage and retention period, and a **Delete all data** action (guarded by a random phrase).
+Organized into tabs (like the system Settings app): **General** — API key (with a Test
+button), update check, reset to defaults; **Dictation** — mode (push-to-talk / toggle),
+hotkey, output; **Vocabulary** — your terms with a live budget counter and the AI correction
+toggle (with a model availability check); **Data** — audio storage, retention, and
+**Delete all data** (guarded by a random phrase).
 
 ## Where data is stored
 

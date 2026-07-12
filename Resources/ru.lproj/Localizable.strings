@@ -59,6 +59,10 @@
 
 /* Настройки */
 "settings.title" = "Voica — Настройки";
+"settings.tab.general" = "Основные";
+"settings.tab.dictation" = "Диктовка";
+"settings.tab.vocab" = "Словарь";
+"settings.tab.data" = "Данные";
 "settings.key.header" = "Ключ Groq API";
 "settings.key.show" = "Показать";
 "settings.key.save" = "Сохранить";
@@ -85,12 +89,21 @@
 "settings.vocab.hint" = "Слова, которые Whisper часто коверкает — названия, жаргон, англицизмы. Применяется ко всем диктовкам как подсказка (не жёсткое правило). Напр.: Kubernetes, kubectl, Groq, ЕИС, оферта.";
 "settings.vocab.llm" = "Исправлять термины через ИИ (доп. запрос к Groq)";
 "settings.vocab.llm.hint" = "После распознавания языковая модель Groq надёжно исправляет искажённые термины из словаря — с учётом падежа и контекста. Добавляет ~1–2 с. Если запрос не удался — вставляется исходный текст.";
+"settings.vocab.llm.checking" = "Проверяю доступность модели…";
+"settings.vocab.llm.ok" = "Модель доступна";
+"settings.vocab.llm.blocked" = "Модель %@ заблокирована — разрешите её в console.groq.com → Settings → Limits";
 "settings.audio.header" = "Аудио";
 "settings.audio.store" = "Хранить аудиозаписи";
 "settings.audio.retentionPrefix" = "Удалять аудио старше";
 "settings.audio.retentionSuffix" = "дней (0 = хранить всегда)";
 "settings.updates.header" = "Обновления";
 "settings.updates.onLaunch" = "Проверять обновления при запуске";
+"settings.reset.button" = "Сбросить настройки…";
+"settings.reset.hint" = "Возвращает все настройки к значениям по умолчанию. Ключ, история, аудио и словарь сохраняются.";
+"settings.reset.title" = "Сбросить все настройки?";
+"settings.reset.msg" = "Все настройки вернутся к значениям по умолчанию. API-ключ, история диктовок, аудиозаписи и словарь терминов сохраняются.";
+"settings.reset.confirm" = "Сбросить";
+"settings.vocab.counter" = "%1$d / %2$d символов";
 "settings.data.header" = "Данные";
 "settings.data.deleteAll" = "Удалить все данные…";
 
