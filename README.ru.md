@@ -1,11 +1,24 @@
-<!-- Languages: [English](README.md) · **Русский** -->
+<p align="center"><a href="README.md">English</a> · <b>Русский</b></p>
 
-# Voica
+<p align="center">
+  <img src="docs/icon.png" width="128" alt="Иконка Voica">
+</p>
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Inhum/voica)
+<h1 align="center">Voica</h1>
 
-Меню-бар приложение для macOS: диктуешь голосом — получаешь текст **с пунктуацией**.
-Транскрибация через [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`).
+<p align="center">
+  Меню-бар приложение для macOS: диктуешь голосом — получаешь текст <b>с пунктуацией</b>,
+  через <a href="https://groq.com">Groq</a> Whisper (<code>whisper-large-v3-turbo</code>).
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS%2013%2B-black" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="Лицензия MIT">
+  <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
+  <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+</p>
+
+---
 
 > Встроенная диктовка iOS/macOS не расставляет знаки препинания. Voica — расставляет.
 

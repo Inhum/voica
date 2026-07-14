@@ -1,4 +1,4 @@
-<!-- Languages: **English** · [Русский](README.ru.md) -->
+<p align="center"><b>English</b> · <a href="README.ru.md">Русский</a></p>
 
 <p align="center">
   <img src="docs/icon.png" width="128" alt="Voica icon">
