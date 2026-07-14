@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-black" alt="macOS 13+">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
   <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
+  <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ---

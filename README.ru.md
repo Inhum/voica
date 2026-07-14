@@ -2,6 +2,8 @@
 
 # Voica
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Inhum/voica)
+
 Меню-бар приложение для macOS: диктуешь голосом — получаешь текст **с пунктуацией**.
 Транскрибация через [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`).
 
