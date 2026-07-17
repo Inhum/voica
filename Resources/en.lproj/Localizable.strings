@@ -129,6 +129,11 @@
 "about.tagline" = "Voice dictation with punctuation via Groq Whisper";
 "about.github" = "GitHub";
 
+/* Local engine errors */
+"local.err.noModel" = "Local model is not downloaded. Choose the local engine in Settings to download it.";
+"local.err.noVocab" = "Local engine vocabulary is missing from the app bundle.";
+"local.err.badOutput" = "Local engine returned unexpected output.";
+
 /* Groq errors */
 "groq.err.noKey" = "No Groq API key set. Open Settings and paste the key.";
 "groq.err.readFile" = "Couldn’t read the recording’s audio file.";

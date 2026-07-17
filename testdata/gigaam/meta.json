@@ -1,0 +1,8 @@
+{
+ "sample_rate": 16000,
+ "n_mels": 64,
+ "hop": 160,
+ "win": 320,
+ "n_fft": 320,
+ "center": false
+}

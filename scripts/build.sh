@@ -21,6 +21,9 @@ swiftc "${SWIFT_FLAGS[@]}" -o "$APP/Contents/MacOS/$NAME" Sources/*.swift
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"   # локализация (en/ru)
 [ -f Resources/Voica.icns ] && cp Resources/Voica.icns "$APP/Contents/Resources/"
+for f in Resources/gigaam-*; do   # ресурсы локального движка (словарь, окно, мел-банк)
+    [ -f "$f" ] && cp "$f" "$APP/Contents/Resources/"
+done
 
 # Подпись. Если есть локальный сертификат «Voica Self-Signed» — подписываем им
 # (стабильная идентичность → разрешение Accessibility держится между обновлениями).

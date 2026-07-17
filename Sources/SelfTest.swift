@@ -69,6 +69,66 @@ enum SelfTest {
         check("update double-digit", Updater.isNewer("0.10.0", than: "0.9.0"))
         check("update normalize v-prefix", Updater.normalize("v0.5.0") == "0.5.0")
 
+        // Локальный движок: CTC-декодер (чистая логика)
+        let dec = CTCDecoder(pieces: ["<unk>", "▁при", "вет", "▁мир"])   // blank = 4
+        check("ctc collapse+blank", dec.decode([1, 1, 4, 2, 4, 3, 3]) == "привет мир")
+        check("ctc unk skipped", dec.decode([0, 1, 2]) == "привет")
+        check("ctc empty", dec.decode([4, 4, 4]) == "")
+
+        // Локальный движок: паритет мел-спектрограммы с Python (testdata/gigaam)
+        let td = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("testdata/gigaam")
+        let chirpWav = td.appendingPathComponent("chirp.wav")
+        let chirpRef = td.appendingPathComponent("chirp-mel.f32")
+        if FileManager.default.fileExists(atPath: chirpWav.path),
+           let refData = try? Data(contentsOf: chirpRef),
+           let sig = try? LocalSTT.loadWav16k(chirpWav) {
+            let (mel, T) = MelFrontend.logMel(sig)
+            let ref = refData.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+            if ref.count == mel.count {
+                var maxDiff: Float = 0
+                var maxIdx = 0
+                for i in 0..<mel.count where abs(mel[i] - ref[i]) > maxDiff {
+                    maxDiff = abs(mel[i] - ref[i]); maxIdx = i
+                }
+                let (m, t) = (maxIdx / T, maxIdx % T)
+                print(String(format: "  · mel parity: %d кадров, max|Δ| = %.5f @ (mel %d, frame %d): наш %.4f, ref %.4f",
+                             T, maxDiff, m, t, mel[maxIdx], ref[maxIdx]))
+                check("mel parity vs torchaudio", maxDiff < 0.01)
+            } else {
+                print("  · mel parity: sig=\(sig.count) сэмплов, mel=\(mel.count), ref=\(ref.count)")
+                check("mel parity vs torchaudio (размеры)", false)
+            }
+        } else {
+            print("  · mel parity: testdata/gigaam не найдена — пропуск")
+        }
+
+        // Локальный движок e2e (только если модель и dev-эталон есть на машине)
+        let devRef = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/gigaam/dev-ref")
+        let refWav = devRef.appendingPathComponent("seg600.wav")
+        if LocalSTT.isModelAvailable, FileManager.default.fileExists(atPath: refWav.path),
+           let expected = try? String(contentsOf: devRef.appendingPathComponent("seg600-text.txt"),
+                                      encoding: .utf8) {
+            do {
+                let sig = try LocalSTT.loadWav16k(refWav)
+                let start = Date()
+                let got = try LocalSTT.shared.transcribe(sig)
+                print(String(format: "  · local e2e: %.1fs; текст: %@…", -start.timeIntervalSinceNow,
+                             String(got.prefix(50))))
+                check("local e2e text match", got == expected.trimmingCharacters(in: .whitespacesAndNewlines))
+                if got != expected.trimmingCharacters(in: .whitespacesAndNewlines) {
+                    print("    ожидалось: \(expected.prefix(80))")
+                    print("    получено : \(got.prefix(80))")
+                }
+            } catch {
+                check("local e2e text match", false)
+                print("    ошибка: \(error.localizedDescription)")
+            }
+        } else {
+            print("  · local e2e: модель/dev-ref не найдены — пропуск")
+        }
+
         // Hotkey — сопоставление клавиш с флагами
         check("hotkey flag option", HotkeyManager.flag(for: 61) == .option)
         check("hotkey flag command", HotkeyManager.flag(for: 54) == .command)
