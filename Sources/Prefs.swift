@@ -15,6 +15,7 @@ enum Prefs {
         static let lastUpdateCheck = "lastUpdateCheck"
         static let vocabulary    = "vocabulary"
         static let llmPostProcess = "llmPostProcess"
+        static let sttEngine     = "sttEngine"       // "cloud" | "local"
     }
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
@@ -74,10 +75,16 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.llmPostProcess) }
     }
 
+    /// Движок распознавания: "cloud" (Groq) или "local" (GigaAM, офлайн). По умолчанию облако.
+    static var sttEngine: String {
+        get { d.string(forKey: Key.sttEngine) ?? "cloud" }
+        set { d.set(newValue, forKey: Key.sttEngine) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
-         Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess]
+         Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess, Key.sttEngine]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

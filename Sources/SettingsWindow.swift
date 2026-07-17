@@ -9,6 +9,13 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     /// Вызывается после изменения настроек хоткея, чтобы применить их вживую.
     var onHotkeySettingsChanged: (() -> Void)?
 
+    // General: движок распознавания
+    private var engineControl: NSSegmentedControl!
+    private var engineStatusIcon: NSImageView!
+    private var engineStatusLabel: NSTextField!
+    private var engineProgress: NSProgressIndicator!
+    private var engineCancelBtn: NSButton!
+
     // General
     private var secureKeyField: NSSecureTextField!
     private var plainKeyField: NSTextField!
@@ -34,6 +41,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     // Data
     private var storeAudioToggle: NSButton!
     private var retentionField: NSTextField!
+    private var deleteModelBtn: NSButton!
+    private var modelSizeLabel: NSTextField!
 
     private var tabs: NSTabViewController!
 
@@ -113,6 +122,49 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     private func buildGeneralTab() -> NSView {
         let (container, stack) = tabContainer()
+
+        // Движок распознавания: облако / локально (+докачка модели с прогрессом)
+        stack.addArrangedSubview(header(L("settings.engine.header")))
+
+        engineControl = NSSegmentedControl(labels: [L("settings.engine.cloud"), L("settings.engine.local")],
+                                           trackingMode: .selectOne, target: self,
+                                           action: #selector(engineChanged))
+        stack.addArrangedSubview(engineControl)
+
+        engineStatusIcon = makeStatusIcon()
+        engineStatusLabel = makeStatusLabel()
+        engineProgress = NSProgressIndicator()
+        engineProgress.style = .bar
+        engineProgress.isIndeterminate = false
+        engineProgress.minValue = 0
+        engineProgress.maxValue = 1
+        engineProgress.translatesAutoresizingMaskIntoConstraints = false
+        engineProgress.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        engineProgress.isHidden = true
+        engineCancelBtn = NSButton(title: L("settings.engine.cancel"), target: self,
+                                   action: #selector(cancelModelDownload))
+        engineCancelBtn.controlSize = .small
+        engineCancelBtn.isHidden = true
+
+        let engineStatusRow = NSStackView(views: [engineStatusIcon, engineStatusLabel,
+                                                  engineProgress, engineCancelBtn])
+        engineStatusRow.spacing = 6
+        engineStatusRow.alignment = .centerY
+        stack.addArrangedSubview(engineStatusRow)
+
+        stack.addArrangedSubview(makeHint(L("settings.engine.hint")))
+
+        // Скачивание — процесс долгий и переживает закрытие окна; подписываемся один раз.
+        ModelDownloader.shared.onProgress = { [weak self] p in
+            guard let self else { return }
+            self.engineProgress.doubleValue = p
+            self.engineStatusLabel.stringValue = L("settings.engine.status.downloading", Int(p * 100))
+        }
+        ModelDownloader.shared.onFinish = { [weak self] outcome in
+            self?.modelDownloadFinished(outcome)
+        }
+
+        stack.addArrangedSubview(separator())
 
         stack.addArrangedSubview(header(L("settings.key.header")))
 
@@ -260,6 +312,19 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         stack.addArrangedSubview(separator())
 
+        // Локальная модель: сколько занимает на диске + удаление (вместе с кэшем)
+        stack.addArrangedSubview(header(L("settings.model.header")))
+        modelSizeLabel = makeStatusLabel()
+        deleteModelBtn = NSButton(title: L("settings.model.delete"), target: self,
+                                  action: #selector(deleteLocalModel))
+        let modelRow = NSStackView(views: [deleteModelBtn, modelSizeLabel])
+        modelRow.spacing = 8
+        modelRow.alignment = .centerY
+        stack.addArrangedSubview(modelRow)
+        stack.addArrangedSubview(makeHint(L("settings.model.hint")))
+
+        stack.addArrangedSubview(separator())
+
         stack.addArrangedSubview(header(L("settings.data.header")))
         let deleteBtn = NSButton(title: L("settings.data.deleteAll"), target: self, action: #selector(deleteAllData))
         deleteBtn.hasDestructiveAction = true
@@ -331,6 +396,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
                              label: NSTextField, text: String, kind: StatusKind) {
         spinner.stopAnimation(nil)
         label.stringValue = text
+        setStatusIcon(icon, kind)
+    }
+
+    private func setStatusIcon(_ icon: NSImageView, _ kind: StatusKind) {
         switch kind {
         case .neutral:
             icon.isHidden = true
@@ -387,6 +456,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         updateVocabCounter()
         llmToggle.state = Prefs.llmPostProcess ? .on : .off
         if Prefs.llmPostProcess { verifyChatModel() } else { clearLLMStatus() }
+        refreshEngineUI()
+        refreshModelSizeUI()
     }
 
     /// Живой счётчик символов словаря относительно бюджета prompt.
@@ -500,6 +571,84 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     @objc private func retentionChanged() {
         Prefs.retentionDays = max(0, retentionField.integerValue)
         retentionField.integerValue = Prefs.retentionDays
+    }
+
+    // MARK: - Действия: движок распознавания / локальная модель
+
+    @objc private func engineChanged() {
+        let local = (engineControl.selectedSegment == 1)
+        Prefs.sttEngine = local ? "local" : "cloud"
+        if local, !LocalSTT.isModelAvailable, !ModelDownloader.shared.isDownloading {
+            engineProgress.doubleValue = 0
+            ModelDownloader.shared.start()
+        }
+        if !local, ModelDownloader.shared.isDownloading {
+            ModelDownloader.shared.cancel()   // передумали — не тратим трафик
+        }
+        refreshEngineUI()
+    }
+
+    @objc private func cancelModelDownload() {
+        ModelDownloader.shared.cancel()
+    }
+
+    private func modelDownloadFinished(_ outcome: ModelDownloader.Outcome) {
+        // Если модель не появилась (отмена/ошибка) — честно возвращаемся на облако.
+        if !LocalSTT.isModelAvailable, Prefs.sttEngine == "local" {
+            Prefs.sttEngine = "cloud"
+        }
+        refreshEngineUI()
+        refreshModelSizeUI()
+        if case .failure(let msg) = outcome {
+            engineStatusLabel.stringValue = L("settings.engine.status.failed", msg)
+            setStatusIcon(engineStatusIcon, .warning)
+        }
+    }
+
+    private func refreshEngineUI() {
+        engineControl.selectedSegment = (Prefs.sttEngine == "local") ? 1 : 0
+        let downloading = ModelDownloader.shared.isDownloading
+        engineProgress.isHidden = !downloading
+        engineCancelBtn.isHidden = !downloading
+        if downloading {
+            engineStatusLabel.stringValue =
+                L("settings.engine.status.downloading", Int(engineProgress.doubleValue * 100))
+            setStatusIcon(engineStatusIcon, .neutral)
+        } else if LocalSTT.isModelAvailable {
+            engineStatusLabel.stringValue = L("settings.engine.status.ready")
+            setStatusIcon(engineStatusIcon, .success)
+        } else {
+            engineStatusLabel.stringValue = L("settings.engine.status.missing")
+            setStatusIcon(engineStatusIcon, .neutral)
+        }
+    }
+
+    private func refreshModelSizeUI() {
+        let bytes = ModelDownloader.installedSizeBytes()
+        if bytes > 0 {
+            deleteModelBtn.isEnabled = true
+            modelSizeLabel.stringValue = L("settings.model.size",
+                ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
+        } else {
+            deleteModelBtn.isEnabled = false
+            modelSizeLabel.stringValue = L("settings.model.none")
+        }
+    }
+
+    @objc private func deleteLocalModel() {
+        let size = ByteCountFormatter.string(fromByteCount: ModelDownloader.installedSizeBytes(),
+                                             countStyle: .file)
+        let alert = NSAlert()
+        alert.messageText = L("settings.model.delete.title")
+        alert.informativeText = L("settings.model.delete.msg", size)
+        alert.addButton(withTitle: L("settings.model.delete.confirm"))
+        alert.addButton(withTitle: L("common.cancel"))
+        alert.buttons.first?.hasDestructiveAction = true
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        ModelDownloader.deleteInstalledModel()
+        if Prefs.sttEngine == "local" { Prefs.sttEngine = "cloud" }
+        refreshEngineUI()
+        refreshModelSizeUI()
     }
 
     // MARK: - Действия: ИИ-исправление (verify доступности модели)

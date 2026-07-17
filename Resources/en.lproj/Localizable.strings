@@ -134,6 +134,37 @@
 "local.err.noVocab" = "Local engine vocabulary is missing from the app bundle.";
 "local.err.badOutput" = "Local engine returned unexpected output.";
 
+/* Recognition engine (Settings → General) */
+"settings.engine.header" = "Speech Recognition";
+"settings.engine.cloud" = "Cloud (Groq)";
+"settings.engine.local" = "Local (offline)";
+"settings.engine.hint" = "The local engine runs entirely on this Mac: no internet or API key needed, punctuation included. Trade-offs: English words may come out in Cyrillic, and the vocabulary hint only works with the cloud engine (AI term fixing still works). One-time model download: about 390 MB.";
+"settings.engine.status.ready" = "Local model is installed";
+"settings.engine.status.missing" = "Model not downloaded yet (~390 MB)";
+"settings.engine.status.downloading" = "Downloading model… %d%%";
+"settings.engine.status.failed" = "Download failed: %@";
+"settings.engine.cancel" = "Cancel";
+
+/* Local model (Settings → Data) */
+"settings.model.header" = "Local Model";
+"settings.model.delete" = "Delete Local Model";
+"settings.model.size" = "On disk: %@";
+"settings.model.none" = "Not installed";
+"settings.model.hint" = "Deletes the downloaded recognition model and its compiled cache. You can download it again anytime by choosing the local engine in General.";
+"settings.model.delete.title" = "Delete the local model?";
+"settings.model.delete.msg" = "This frees %@ on disk. Recognition will switch to the cloud engine. The model can be downloaded again anytime.";
+"settings.model.delete.confirm" = "Delete";
+
+/* Model download errors */
+"model.err.http" = "server returned code %d";
+"model.err.checksum" = "downloaded file is corrupted (checksum mismatch) — try again";
+"model.err.unzip" = "couldn’t unpack the archive";
+"model.err.missing" = "the archive doesn’t contain the model";
+
+/* Offline fallback notification */
+"notify.fallback.title" = "Cloud is unreachable";
+"notify.fallback.body" = "This recording was transcribed with the local model (offline).";
+
 /* Groq errors */
 "groq.err.noKey" = "No Groq API key set. Open Settings and paste the key.";
 "groq.err.readFile" = "Couldn’t read the recording’s audio file.";

@@ -171,6 +171,53 @@ enum SelfTest {
         check("prefs llmPostProcess round-trip", Prefs.llmPostProcess == true)
         Prefs.llmPostProcess = savedPP
 
+        // Движок распознавания — настройка и загрузчик модели
+        let savedEngine = Prefs.sttEngine
+        check("prefs sttEngine default", UserDefaults.standard.string(forKey: "sttEngine") != nil
+              || Prefs.sttEngine == "cloud")
+        Prefs.sttEngine = "local"
+        check("prefs sttEngine round-trip", Prefs.sttEngine == "local")
+        Prefs.sttEngine = savedEngine
+
+        check("model url is https github", ModelDownloader.downloadURL.scheme == "https"
+              || ProcessInfo.processInfo.environment["VOICA_GIGAAM_URL"] != nil)
+        check("model sha256 is set", ModelDownloader.expectedSHA256.count == 64)
+
+        // sha256 — известный вектор ("abc")
+        do {
+            let tmp = FileManager.default.temporaryDirectory
+                .appendingPathComponent("voica-selftest-\(UUID().uuidString)")
+            try Data("abc".utf8).write(to: tmp)
+            defer { try? FileManager.default.removeItem(at: tmp) }
+            let h = try ModelDownloader.sha256Hex(of: tmp)
+            check("sha256 known vector",
+                  h == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        } catch {
+            check("sha256 known vector", false)
+        }
+
+        // распаковка zip (ditto) — round-trip на крошечной фикстуре
+        do {
+            let base = FileManager.default.temporaryDirectory
+                .appendingPathComponent("voica-selftest-zip-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: base) }
+            let srcDir = base.appendingPathComponent("payload.mlpackage", isDirectory: true)
+            try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
+            try Data("hello".utf8).write(to: srcDir.appendingPathComponent("f.txt"))
+            let zip = base.appendingPathComponent("payload.zip")
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+            p.arguments = ["-c", "-k", "--keepParent", srcDir.path, zip.path]
+            try p.run(); p.waitUntilExit()
+            let out = base.appendingPathComponent("out", isDirectory: true)
+            try ModelDownloader.extract(zip: zip, to: out)
+            let extracted = out.appendingPathComponent("payload.mlpackage/f.txt")
+            check("model zip extract round-trip",
+                  (try? String(contentsOf: extracted, encoding: .utf8)) == "hello")
+        } catch {
+            check("model zip extract round-trip", false)
+        }
+
         print("Итог: \(passed) passed, \(failed) failed")
         return failed == 0
     }

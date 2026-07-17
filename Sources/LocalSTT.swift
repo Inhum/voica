@@ -18,6 +18,9 @@ import Foundation
 final class LocalSTT {
     static let shared = LocalSTT()
 
+    /// Имя движка для колонки model в истории.
+    static let modelName = "gigaam-v3-e2e-ctc"
+
     static let windowSamples = 25 * MelFrontend.sampleRate          // 400_000
     static let windowFrames = MelFrontend.frameCount(samples: windowSamples) // 2499
 
@@ -57,6 +60,15 @@ final class LocalSTT {
     /// Начать загрузку модели в фоне (звать при старте записи).
     func preload() {
         queue.async { _ = try? self.loadedModel() }
+    }
+
+    /// Немедленно выгрузить модель из ОЗУ (например, после удаления с диска).
+    func unload() {
+        queue.async {
+            self.idleTimer?.cancel()
+            self.idleTimer = nil
+            self.model = nil
+        }
     }
 
     /// Выгрузить модель после простоя (по умолчанию 15 минут), вернуть ОЗУ.

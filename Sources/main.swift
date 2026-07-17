@@ -7,6 +7,7 @@
 // Этап 2: рабочий цикл — PTT-хоткей / пункт меню → запись → Groq → текст в буфер + окно.
 
 import Cocoa
+import UserNotifications
 
 let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
 
@@ -61,7 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkey.start()
 
         // Онбординг: если ключа нет — сразу открыть Settings.
-        if currentAPIKey() == nil {
+        // Кроме случая, когда выбран локальный движок: там ключ не обязателен.
+        if currentAPIKey() == nil && Prefs.sttEngine != "local" {
             settingsWindow.showAndFocusKey()
         }
 
@@ -197,6 +199,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             self.state = .recording
+            // Локальный движок: поднимаем модель, пока пользователь говорит, —
+            // к концу записи она уже в памяти.
+            if Prefs.sttEngine == "local", LocalSTT.isModelAvailable {
+                LocalSTT.shared.preload()
+            }
         }
     }
 
@@ -209,26 +216,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         state = .transcribing
+        // Локальный движок — если он выбран и модель скачана. Пока модель качается,
+        // работаем через облако (решение UX: переключение «вступает» после загрузки).
+        if Prefs.sttEngine == "local", LocalSTT.isModelAvailable {
+            transcribeLocally(rec: rec)
+        } else {
+            transcribeViaCloud(rec: rec)
+        }
+    }
+
+    private func transcribeViaCloud(rec: (url: URL, duration: TimeInterval)) {
         GroqClient.transcribe(fileURL: rec.url) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
                 switch result {
                 case .success(let t):
-                    if t.text.isEmpty {
+                    self.handleTranscribed(t, rec: rec, model: GroqClient.model)
+                case .failure(let err):
+                    // Сеть недоступна, а локальная модель есть на диске —
+                    // распознаём офлайн и ненавязчиво предупреждаем.
+                    if case .network = err, LocalSTT.isModelAvailable {
+                        self.notifyLocalFallback()
+                        self.transcribeLocally(rec: rec)
+                    } else {
                         self.state = .idle
                         try? FileManager.default.removeItem(at: rec.url)
-                        self.alert(L("alert.empty.title"), L("alert.empty.msg"))
-                    } else if Prefs.llmPostProcess {
-                        // Состояние остаётся .transcribing, пока LLM исправляет термины.
-                        // postProcess fail-open: при любой ошибке вернёт исходный текст.
-                        GroqClient.postProcess(text: t.text) { [weak self] final in
-                            DispatchQueue.main.async {
-                                self?.deliver(text: final, transcription: t, rec: rec)
-                            }
-                        }
-                    } else {
-                        self.deliver(text: t.text, transcription: t, rec: rec)
+                        self.alert(L("alert.transcribe.title"), err.localizedDescription)
                     }
+                }
+            }
+        }
+    }
+
+    private func transcribeLocally(rec: (url: URL, duration: TimeInterval)) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { () -> Transcription in
+                let signal = try LocalSTT.loadWav16k(rec.url)
+                let text = try LocalSTT.shared.transcribe(signal)
+                return Transcription(text: text, language: "ru", duration: rec.duration)
+            }
+            DispatchQueue.main.async {
+                guard let self else { return }
+                LocalSTT.shared.scheduleIdleUnload()   // вернуть ОЗУ после простоя
+                switch result {
+                case .success(let t):
+                    self.handleTranscribed(t, rec: rec, model: LocalSTT.modelName)
                 case .failure(let err):
                     self.state = .idle
                     try? FileManager.default.removeItem(at: rec.url)
@@ -238,13 +270,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Общий хвост обоих движков: пустой результат / ИИ-исправление / доставка.
+    private func handleTranscribed(_ t: Transcription, rec: (url: URL, duration: TimeInterval),
+                                   model: String) {
+        if t.text.isEmpty {
+            state = .idle
+            try? FileManager.default.removeItem(at: rec.url)
+            alert(L("alert.empty.title"), L("alert.empty.msg"))
+        } else if Prefs.llmPostProcess {
+            // Состояние остаётся .transcribing, пока LLM исправляет термины.
+            // postProcess fail-open: при любой ошибке вернёт исходный текст.
+            // Работает и после локального движка (нужен ключ Groq).
+            GroqClient.postProcess(text: t.text) { [weak self] final in
+                DispatchQueue.main.async {
+                    self?.deliver(text: final, transcription: t, rec: rec, model: model)
+                }
+            }
+        } else {
+            deliver(text: t.text, transcription: t, rec: rec, model: model)
+        }
+    }
+
+    /// Системное уведомление о переходе на локальную модель (без модальных окон,
+    /// чтобы не мешать диктовке). Если уведомления запрещены — просто лог.
+    private func notifyLocalFallback() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert]) { granted, _ in
+            guard granted else {
+                NSLog("Voica: нет связи с облаком — распознаю локальной моделью")
+                return
+            }
+            let content = UNMutableNotificationContent()
+            content.title = L("notify.fallback.title")
+            content.body = L("notify.fallback.body")
+            center.add(UNNotificationRequest(identifier: "voica-local-fallback",
+                                             content: content, trigger: nil))
+        }
+    }
+
     /// Финальная доставка результата: история + буфер/вставка или окно.
     private func deliver(text: String, transcription t: Transcription,
-                         rec: (url: URL, duration: TimeInterval)) {
+                         rec: (url: URL, duration: TimeInterval), model: String) {
         state = .idle
         Store.shared.insert(text: text, language: t.language,
                             duration: t.duration ?? rec.duration,
-                            model: GroqClient.model, audioTempURL: rec.url)
+                            model: model, audioTempURL: rec.url)
         try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
         if Prefs.outputMode == "window" {
             resultWindow.show(Transcription(text: text, language: t.language, duration: t.duration))
