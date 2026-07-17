@@ -22,11 +22,19 @@
 Built-in dictation on macOS/iOS doesn't add punctuation — no periods, commas, or question
 marks. Voica does: dictate by a hotkey and get clean, punctuated text inserted right where
 you're typing, transcribed via [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`),
-which is fast and cheap.
+which is fast and cheap — or **fully offline** with a local on-device model (Sber's GigaAM v3,
+excellent for Russian), no internet or API key required.
 
 ## Features
 
 - **Hotkey dictation** — push-to-talk (hold) or toggle (press to start / stop).
+- **Local offline engine (optional)** — switch Settings → General to *Local (offline)* and
+  dictation runs entirely on your Mac via Core ML on the Apple Neural Engine (Sber's
+  [GigaAM v3](https://github.com/salute-developers/GigaAM) model, MIT, punctuation out of
+  the box, excellent Russian). One-time ~400 MB model download with a progress bar; the model
+  can be deleted anytime in Settings → Data. If the cloud is unreachable, Voica automatically
+  falls back to the local model (with a notification). Trade-offs: English words may come out
+  transliterated in Cyrillic, and the vocabulary hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
   window — your choice in Settings), and always copied to the clipboard as a fallback.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
@@ -41,8 +49,9 @@ which is fast and cheap.
 - **Update checks** — optionally checks GitHub for a newer version on launch and points you to
   the release page. Never downloads or installs anything by itself; can be turned off.
 - API key stored in a **protected file** (`0600`, readable only by you) — never in the repo.
-- **Privacy-friendly**: everything stays on your Mac. Audio goes only to Groq for transcription;
-  the only other network call is the optional, anonymous update check to GitHub.
+- **Privacy-friendly**: everything stays on your Mac. Audio goes only to Groq for transcription —
+  or nowhere at all with the local engine; the only other network call is the optional,
+  anonymous update check to GitHub.
 
 ## Screenshots
 
@@ -70,6 +79,8 @@ On first use macOS asks for two permissions:
 
 Then the Settings window opens — paste your **Groq API key** (`gsk_…`), click **Test**,
 then **Save**. Get a key at [console.groq.com/keys](https://console.groq.com/keys).
+Don't want a key or the cloud? Choose **Local (offline)** in Settings → General instead —
+Voica downloads the model (~400 MB, once) and no key is needed at all.
 
 ## Usage
 
@@ -81,11 +92,12 @@ The menu-bar icon reflects state: idle → recording (pulsing) → sending to Gr
 
 ## Settings
 
-Organized into tabs (like the system Settings app): **General** — API key (with a Test
-button), update check, reset to defaults; **Dictation** — mode (push-to-talk / toggle),
-hotkey, output; **Vocabulary** — your terms with a live budget counter and the AI correction
-toggle (with a model availability check); **Data** — audio storage, retention, and
-**Delete all data** (guarded by a random phrase).
+Organized into tabs (like the system Settings app): **General** — speech engine
+(Cloud / Local), API key (with a Test button), update check, reset to defaults;
+**Dictation** — mode (push-to-talk / toggle), hotkey, output; **Vocabulary** — your terms
+with a live budget counter and the AI correction toggle (with a model availability check);
+**Data** — audio storage, retention, local model deletion, and **Delete all data**
+(guarded by a random phrase).
 
 ## Where data is stored
 
@@ -93,12 +105,15 @@ toggle (with a model availability check); **Data** — audio storage, retention,
 ~/Library/Application Support/com.ushakov.voica/history.sqlite   # history
 ~/Library/Application Support/com.ushakov.voica/audio/           # audio recordings
 ~/Library/Application Support/com.ushakov.voica/credentials      # API key (0600)
+~/Library/Application Support/com.ushakov.voica/models/          # local model (if downloaded)
 ~/Library/Preferences/com.ushakov.voica.plist                    # settings
 ```
 
 ## Bring your own Groq key
 
-Voica uses **your own** Groq API key (BYO-key) — the app never ships or shares anyone's key.
+The key is only needed for the **cloud** engine (and for AI term correction); the local
+engine works without one. Voica uses **your own** Groq API key (BYO-key) — the app never
+ships or shares anyone's key.
 Each user gets a free key at [console.groq.com](https://console.groq.com); usage is subject
 to [Groq's Terms of Use](https://groq.com/terms-of-use). Free-tier limits (whisper-large-v3-turbo):
 20 req/min, 2000/day, 7200 audio-seconds/hour — far more than dictation needs.

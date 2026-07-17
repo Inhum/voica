@@ -1,0 +1,78 @@
+# Релиз по тегу vX.Y.Z: сборка, подпись, самотест, .dmg, GitHub Release.
+#
+# Требует два секрета репозитория (Settings → Secrets and variables → Actions):
+#   MACOS_CERT_P12      — base64 от экспортированного .p12 «Voica Self-Signed»
+#   MACOS_CERT_PASSWORD — пароль, заданный при экспорте .p12
+# Сертификат импортируется во временный keychain и умирает вместе с раннером.
+#
+# Ручной прогон (workflow_dispatch) собирает и тестирует, но релиз не публикует.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Импорт сертификата подписи
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12_BASE64" ] || [ -z "$CERT_PASSWORD" ]; then
+            echo "::error::Секреты MACOS_CERT_P12 / MACOS_CERT_PASSWORD не заданы — см. шапку workflow"
+            exit 1
+          fi
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 900 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S "apple-tool:,apple:" \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          rm "$RUNNER_TEMP/cert.p12"
+
+      - name: Версия в Info.plist должна совпадать с тегом
+        if: github.ref_type == 'tag'
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Info.plist: $VERSION, тег: $GITHUB_REF_NAME — поднимите версию перед тегом"
+            exit 1
+          fi
+
+      - name: Сборка, .dmg и самотест
+        run: |
+          ./scripts/package.sh
+          codesign -dvv build/Voica.app 2>&1 | grep "Voica Self-Signed" \
+            || { echo "::error::Приложение подписано не сертификатом Voica Self-Signed"; exit 1; }
+          ./build/Voica.app/Contents/MacOS/Voica --test-all
+
+      - name: Публикация релиза
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # выдёргиваем раздел этой версии из CHANGELOG в описание релиза
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
+            /^## \[/ { flag = 0 }
+            flag' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Voica $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "build/Voica-$VERSION.dmg"
