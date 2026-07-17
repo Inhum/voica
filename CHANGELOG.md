@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Local offline speech recognition (opt-in).** A new engine switch in Settings → General:
+  Cloud (Groq) or Local (offline). The local engine runs Sber's GigaAM v3 model entirely
+  on-device via CoreML (Apple Neural Engine): no internet, no API key, punctuation out of
+  the box. The model (~400 MB, precompiled CoreML) is downloaded once from a GitHub release
+  asset with a progress bar and SHA-256 verification; while it downloads, dictation keeps
+  using the cloud. It can be deleted anytime in Settings → Data ("Delete Local Model").
+  If the cloud is unreachable and the local model is installed, dictation automatically
+  falls back to it with an unobtrusive system notification. Limitations: English words may
+  come out transliterated in Cyrillic; the vocabulary hint remains cloud-only, while AI term
+  correction works with both engines (it needs a key and network).
+
 ## [0.8.0] — 2026-07-12
 
 ### Changed

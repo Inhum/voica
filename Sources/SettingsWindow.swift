@@ -360,9 +360,11 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     }
 
     private func makeHint(_ text: String) -> NSTextField {
+        // Подстрочные пояснения: 11pt + secondaryLabel — читаемо, как в системных
+        // настройках и Tailscale (10pt/tertiary были слишком мелкими и блёклыми).
         let hint = NSTextField(wrappingLabelWithString: text)
-        hint.font = .systemFont(ofSize: 10)
-        hint.textColor = .tertiaryLabelColor
+        hint.font = .systemFont(ofSize: 11)
+        hint.textColor = .secondaryLabelColor
         hint.widthAnchor.constraint(equalToConstant: 424).isActive = true
         return hint
     }

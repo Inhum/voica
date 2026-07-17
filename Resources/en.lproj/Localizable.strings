@@ -86,9 +86,9 @@
 "settings.output.window" = "Show window";
 "settings.output.hint" = "Insert pastes the text where your cursor is (needs Accessibility). It’s always copied to the clipboard too.";
 "settings.vocab.header" = "Vocabulary";
-"settings.vocab.hint" = "Terms Whisper often mishears — names, jargon, anglicisms. Applied to every dictation as a hint (not a strict rule). E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта.";
+"settings.vocab.hint" = "Terms Whisper often mishears — names, jargon, anglicisms. Applied to every dictation as a hint (not a strict rule). E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта. Cloud engine only: the local engine can't take a hint — use AI term fixing below instead.";
 "settings.vocab.llm" = "Fix terms with AI (extra Groq request)";
-"settings.vocab.llm.hint" = "After transcription, a Groq language model reliably fixes garbled vocabulary terms, matching grammatical case and context. Adds ~1–2 s. If the request fails, the raw text is used.";
+"settings.vocab.llm.hint" = "After transcription, a Groq language model reliably fixes garbled vocabulary terms, matching grammatical case and context. Adds ~1–2 s. If the request fails, the raw text is used. Works with both engines — cloud and local (needs the API key and internet).";
 "settings.vocab.llm.checking" = "Checking model availability…";
 "settings.vocab.llm.ok" = "Model available";
 "settings.vocab.llm.blocked" = "Model %@ is blocked — allow it at console.groq.com → Settings → Limits";
@@ -138,9 +138,9 @@
 "settings.engine.header" = "Speech Recognition";
 "settings.engine.cloud" = "Cloud (Groq)";
 "settings.engine.local" = "Local (offline)";
-"settings.engine.hint" = "The local engine runs entirely on this Mac: no internet or API key needed, punctuation included. Trade-offs: English words may come out in Cyrillic, and the vocabulary hint only works with the cloud engine (AI term fixing still works). One-time model download: about 390 MB.";
+"settings.engine.hint" = "The local engine runs entirely on this Mac: no internet or API key needed, punctuation included. Trade-offs: English words may come out in Cyrillic, and the vocabulary hint only works with the cloud engine (AI term fixing still works). One-time model download: about 400 MB.";
 "settings.engine.status.ready" = "Local model is installed";
-"settings.engine.status.missing" = "Model not downloaded yet (~390 MB)";
+"settings.engine.status.missing" = "Model not downloaded yet (~400 MB)";
 "settings.engine.status.downloading" = "Downloading model… %d%%";
 "settings.engine.status.failed" = "Download failed: %@";
 "settings.engine.cancel" = "Cancel";

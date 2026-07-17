@@ -1,5 +1,9 @@
-// Загрузчик локальной модели: качает .zip с .mlpackage (release-ассет GitHub),
-// проверяет SHA-256 и распаковывает в Application Support/models.
+// Загрузчик локальной модели: качает .zip со скомпилированной моделью (.mlmodelc,
+// release-ассет GitHub), проверяет SHA-256 и распаковывает в Application Support/models.
+//
+// Раздаём именно .mlmodelc, а не исходный .mlpackage: формат переносим между Маками
+// (его же Xcode кладёт в бандлы), на диске одна копия вместо двух, и первое включение
+// быстрее — остаётся только системная подгонка под чип при первой загрузке.
 //
 // Синглтон: скачивание переживает закрытие окна настроек. Прогресс и завершение
 // отдаются коллбэками на главном потоке — UI подписывается на них один раз.
@@ -16,12 +20,12 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
         if let dev = ProcessInfo.processInfo.environment["VOICA_GIGAAM_URL"],
            let url = URL(string: dev) { return url }
         return URL(string:
-            "https://github.com/Inhum/voica/releases/download/gigaam-v3-e2e/gigaam_v3_e2e.mlpackage.zip")!
+            "https://github.com/Inhum/voica/releases/download/gigaam-v3-e2e/gigaam_v3_e2e.mlmodelc.zip")!
     }
 
     /// SHA-256 архива с моделью (release-ассет). Пересчитать при замене модели:
-    /// shasum -a 256 gigaam_v3_e2e.mlpackage.zip
-    static let expectedSHA256 = "129a1ca6047ee324fa1634aa7f59f32373a12683d949559b96580c497d58f36d"
+    /// shasum -a 256 gigaam_v3_e2e.mlmodelc.zip
+    static let expectedSHA256 = "0dd95e84457775900e47b5a549da5ef239d73b5a28303b813aa16a80466941ba"
 
     enum Outcome {
         case success
@@ -128,17 +132,24 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
         }
     }
 
-    /// Распаковка в Application Support/models + чистка устаревшего скомпилированного кэша.
+    /// Распаковка в Application Support/models. Распаковываем во временный каталог и
+    /// подменяем атомарно, чтобы недокачанная/битая распаковка не затёрла рабочую модель.
     private static func install(zip: URL) throws {
-        let dir = Store.appSupportDir().appendingPathComponent("models", isDirectory: true)
-        try extract(zip: zip, to: dir)
-        let pkg = dir.appendingPathComponent("gigaam_v3_e2e.mlpackage")
-        guard FileManager.default.fileExists(atPath: pkg.path) else {
+        let fm = FileManager.default
+        let dir = modelsDir()
+        let staging = dir.appendingPathComponent("staging-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: staging) }
+        try extract(zip: zip, to: staging)
+        let fresh = staging.appendingPathComponent("gigaam_v3_e2e.mlmodelc")
+        guard fm.fileExists(atPath: fresh.path) else {
             throw NSError(domain: "Voica", code: 4,
                           userInfo: [NSLocalizedDescriptionKey: L("model.err.missing")])
         }
-        // старый .mlmodelc мог остаться от прежней модели — иначе он затенит новую
-        try? FileManager.default.removeItem(at: dir.appendingPathComponent("gigaam_v3_e2e.mlmodelc"))
+        let dst = dir.appendingPathComponent("gigaam_v3_e2e.mlmodelc")
+        try? fm.removeItem(at: dst)
+        try fm.moveItem(at: fresh, to: dst)
+        // исходный .mlpackage от старой схемы раздачи больше не нужен — не держим две копии
+        try? fm.removeItem(at: dir.appendingPathComponent("gigaam_v3_e2e.mlpackage"))
     }
 
     // MARK: - Установленная модель на диске

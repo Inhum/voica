@@ -407,6 +407,34 @@ if CommandLine.arguments.contains("--test-all") {
     exit(SelfTest.run() ? 0 : 1)
 }
 
+// Служебный режим: скачать и установить локальную модель без GUI.
+// Проверяет весь конвейер загрузчика (сеть → SHA-256 → распаковка) на настоящем
+// release-ассете; $VOICA_GIGAAM_URL переопределяет источник.
+if CommandLine.arguments.contains("--fetch-model") {
+    print("Качаю \(ModelDownloader.downloadURL.absoluteString)")
+    var ok = false
+    ModelDownloader.shared.onProgress = { p in
+        print(String(format: "\r%3d%%", Int(p * 100)), terminator: "")
+        fflush(stdout)
+    }
+    ModelDownloader.shared.onFinish = { outcome in
+        print("")
+        switch outcome {
+        case .success:
+            print("Модель установлена: \(ModelDownloader.modelsDir().path)")
+            ok = true
+        case .cancelled:
+            print("Отменено")
+        case .failure(let msg):
+            print("Ошибка: \(msg)")
+        }
+        CFRunLoopStop(CFRunLoopGetMain())
+    }
+    ModelDownloader.shared.start()
+    CFRunLoopRun()   // коллбэки приходят на главный поток — крутим его run loop
+    exit(ok ? 0 : 1)
+}
+
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)   // меню-бар агент, без иконки в доке
 let delegate = AppDelegate()
