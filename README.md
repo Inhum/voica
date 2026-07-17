@@ -7,7 +7,9 @@
 <h1 align="center">Voica</h1>
 
 <p align="center">
-  A macOS menu-bar app for voice dictation <b>with punctuation</b>, powered by Groq Whisper.
+  A macOS menu-bar app for voice dictation <b>with punctuation</b> —
+  via <a href="https://groq.com">Groq</a> Whisper (<code>whisper-large-v3-turbo</code>)
+  or fully offline with a local model (GigaAM v3).
 </p>
 
 <p align="center">

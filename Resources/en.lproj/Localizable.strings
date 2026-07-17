@@ -126,7 +126,7 @@
 
 /* About */
 "about.version" = "Version %@";
-"about.tagline" = "Voice dictation with punctuation via Groq Whisper";
+"about.tagline" = "Voice dictation with punctuation — Groq Whisper in the cloud or GigaAM on this Mac";
 "about.github" = "GitHub";
 
 /* Local engine errors */
@@ -139,7 +139,8 @@
 "settings.engine.cloud" = "Cloud (Groq)";
 "settings.engine.local" = "Local (offline)";
 "settings.engine.hint" = "The local engine runs entirely on this Mac: no internet or API key needed, punctuation included. Trade-offs: English words may come out in Cyrillic, and the vocabulary hint only works with the cloud engine (AI term fixing still works). One-time model download: about 400 MB.";
-"settings.engine.status.ready" = "Local model is installed";
+"settings.engine.status.cloudActive" = "Active model: whisper-large-v3-turbo (Groq cloud)";
+"settings.engine.status.localActive" = "Active model: GigaAM v3 — runs on this Mac";
 "settings.engine.status.missing" = "Model not downloaded yet (~400 MB)";
 "settings.engine.status.downloading" = "Downloading model… %d%%";
 "settings.engine.status.failed" = "Download failed: %@";

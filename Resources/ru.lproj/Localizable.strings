@@ -126,7 +126,7 @@
 
 /* О программе */
 "about.version" = "Версия %@";
-"about.tagline" = "Диктовка с пунктуацией через Groq Whisper";
+"about.tagline" = "Диктовка с пунктуацией — Groq Whisper в облаке или GigaAM на этом Маке";
 "about.github" = "GitHub";
 
 /* Ошибки локального движка */
@@ -137,7 +137,8 @@
 "settings.engine.cloud" = "Облако (Groq)";
 "settings.engine.local" = "Локально (офлайн)";
 "settings.engine.hint" = "Локальный движок работает целиком на этом Маке: не нужны ни интернет, ни ключ, пунктуация — из коробки. Особенности: английские слова могут записаться кириллицей, а словарь-подсказка работает только с облаком (ИИ-исправление терминов работает). Разовая загрузка модели — около 400 МБ.";
-"settings.engine.status.ready" = "Локальная модель установлена";
+"settings.engine.status.cloudActive" = "Работает модель: whisper-large-v3-turbo (облако Groq)";
+"settings.engine.status.localActive" = "Работает модель: GigaAM v3 — на этом Маке";
 "settings.engine.status.missing" = "Модель ещё не скачана (~400 МБ)";
 "settings.engine.status.downloading" = "Скачивание модели… %d%%";
 "settings.engine.status.failed" = "Не удалось скачать: %@";

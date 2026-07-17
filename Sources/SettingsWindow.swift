@@ -612,16 +612,20 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         let downloading = ModelDownloader.shared.isDownloading
         engineProgress.isHidden = !downloading
         engineCancelBtn.isHidden = !downloading
+        // Статус называет РАБОТАЮЩУЮ модель, а не только факт установки локальной.
         if downloading {
             engineStatusLabel.stringValue =
                 L("settings.engine.status.downloading", Int(engineProgress.doubleValue * 100))
             setStatusIcon(engineStatusIcon, .neutral)
-        } else if LocalSTT.isModelAvailable {
-            engineStatusLabel.stringValue = L("settings.engine.status.ready")
+        } else if Prefs.sttEngine == "local", LocalSTT.isModelAvailable {
+            engineStatusLabel.stringValue = L("settings.engine.status.localActive")
             setStatusIcon(engineStatusIcon, .success)
-        } else {
+        } else if Prefs.sttEngine == "local" {
             engineStatusLabel.stringValue = L("settings.engine.status.missing")
             setStatusIcon(engineStatusIcon, .neutral)
+        } else {
+            engineStatusLabel.stringValue = L("settings.engine.status.cloudActive")
+            setStatusIcon(engineStatusIcon, .success)
         }
     }
 

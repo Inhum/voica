@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] — 2026-07-17
+
+### Changed
+- Settings → General now names the **active model** next to the engine switch:
+  `whisper-large-v3-turbo (Groq cloud)` or `GigaAM v3 — runs on this Mac`.
+- The About window tagline and the README headers (both languages) mention both engines
+  consistently — cloud Groq Whisper and the local GigaAM model.
+
 ## [0.9.0] — 2026-07-17
 
 ### Added
