@@ -97,7 +97,7 @@ enum GroqClient {
     // MARK: - LLM-постобработка (исправление терминов из словаря)
 
     static let chatEndpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
-    static let postProcessModel = "qwen/qwen3-32b"
+    static let postProcessModel = "llama-3.3-70b-versatile"
 
     /// Промпт для исправления терминов. nil — словарь пуст, постобработка не нужна.
     static func postProcessPrompt(text: String, vocabulary: String) -> String? {
@@ -120,7 +120,7 @@ enum GroqClient {
         """
     }
 
-    /// Исправляет искажённые термины из словаря через Groq LLM (qwen3-32b, без reasoning).
+    /// Исправляет искажённые термины из словаря через Groq LLM (llama-3.3-70b-versatile).
     /// Fail-open: при любой ошибке/таймауте возвращает исходный текст —
     /// диктовка никогда не блокируется постобработкой.
     static func postProcess(text: String, completion: @escaping (String) -> Void) {
@@ -131,7 +131,6 @@ enum GroqClient {
         let payload: [String: Any] = [
             "model": postProcessModel,
             "temperature": 0,
-            "reasoning_effort": "none",   // qwen3 — thinking-модель; размышления тут не нужны
             "max_completion_tokens": 4096,
             "messages": [["role": "user", "content": prompt]],
         ]
@@ -168,7 +167,6 @@ enum GroqClient {
         let payload: [String: Any] = [
             "model": postProcessModel,
             "temperature": 0,
-            "reasoning_effort": "none",
             "max_completion_tokens": 8,
             "messages": [["role": "user", "content": "ok"]],
         ]
@@ -187,6 +185,7 @@ enum GroqClient {
             switch http.statusCode {
             case 200:  completion(nil)
             case 403:  completion(L("settings.vocab.llm.blocked", postProcessModel))
+            case 404:  completion(L("settings.vocab.llm.notfound", postProcessModel))
             case 401:  completion(L("groq.validate.rejected"))
             default:   completion(L("groq.validate.http", http.statusCode))
             }

@@ -92,6 +92,7 @@
 "settings.vocab.llm.checking" = "Checking model availability…";
 "settings.vocab.llm.ok" = "Model available";
 "settings.vocab.llm.blocked" = "Model %@ is blocked — allow it at console.groq.com → Settings → Limits";
+"settings.vocab.llm.notfound" = "Model %@ is unavailable (Groq may have renamed or removed it) — update the app";
 "settings.audio.header" = "Audio";
 "settings.audio.store" = "Keep audio recordings";
 "settings.audio.retentionPrefix" = "Delete audio older than";

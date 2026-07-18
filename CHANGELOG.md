@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.3] — 2026-07-18 — Fix: AI term correction model (Groq removed qwen3-32b)
+
+### Fixed
+- AI term correction failed with **HTTP 404** because Groq removed the hardcoded
+  `qwen/qwen3-32b` model. Switched to the production model `llama-3.3-70b-versatile`
+  and dropped the qwen-specific `reasoning_effort` parameter.
+- The model-availability check now reports a **404** clearly (“model unavailable — Groq may
+  have renamed or removed it”) instead of a bare `HTTP 404`.
+
 ## [0.9.2] — 2026-07-18 — Fix: runs on macOS 13+ again
 
 ### Fixed

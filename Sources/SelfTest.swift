@@ -164,7 +164,7 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
-        check("postprocess model", GroqClient.postProcessModel == "qwen/qwen3-32b")
+        check("postprocess model", GroqClient.postProcessModel == "llama-3.3-70b-versatile")
 
         let savedPP = Prefs.llmPostProcess
         Prefs.llmPostProcess = true

@@ -68,8 +68,11 @@ excellent for Russian), no internet or API key required.
 1. Download `Voica-<version>.dmg` from [Releases](https://github.com/Inhum/voica/releases)
    (or build from source — see below).
 2. Open the `.dmg` and drag **Voica** to **Applications**.
-3. The app isn't notarized, so on first launch macOS warns about an unidentified developer:
-   System Settings → Privacy & Security → **Open Anyway**. After that it opens normally.
+3. The app isn't notarized, so the first launch is blocked with **“Voica” Not Opened**
+   (or *cannot be checked for malware*). Click **Done** (not “Move to Bin”), then open
+   System Settings → **Privacy & Security**, scroll to the Security section, and click
+   **Open Anyway** next to the Voica message; confirm once more. After that it opens normally.
+   Alternatively, run once in Terminal: `xattr -dr com.apple.quarantine /Applications/Voica.app`.
 
 ## First run & permissions
 
@@ -121,9 +124,9 @@ to [Groq's Terms of Use](https://groq.com/terms-of-use). Free-tier limits (whisp
 20 req/min, 2000/day, 7200 audio-seconds/hour — far more than dictation needs.
 
 **If you enable AI term correction** (Settings → Vocabulary), Voica also calls the chat model
-`qwen/qwen3-32b`. If your Groq organization restricts model access, allow this model at
-console.groq.com → Settings → Limits — otherwise the correction silently falls back to the
-raw transcription (fail-open by design).
+`llama-3.3-70b-versatile`. Some Groq organizations block chat models by default — if the
+status shows *blocked*, allow this model at console.groq.com → Settings → Limits. Otherwise
+the correction silently falls back to the raw transcription (fail-open by design).
 
 ## Build from source
 

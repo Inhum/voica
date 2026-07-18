@@ -92,6 +92,7 @@
 "settings.vocab.llm.checking" = "Проверяю доступность модели…";
 "settings.vocab.llm.ok" = "Модель доступна";
 "settings.vocab.llm.blocked" = "Модель %@ заблокирована — разрешите её в console.groq.com → Settings → Limits";
+"settings.vocab.llm.notfound" = "Модель %@ недоступна (Groq мог переименовать или убрать её) — обновите приложение";
 "settings.audio.header" = "Аудио";
 "settings.audio.store" = "Хранить аудиозаписи";
 "settings.audio.retentionPrefix" = "Удалять аудио старше";
