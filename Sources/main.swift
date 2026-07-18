@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return w
     }()
     private lazy var aboutWindow = AboutWindowController()
+    private let prepHUD = PrepHUD()
 
     private var pulseTimer: Timer?
     private var state: DictationState = .idle { didSet { updateIcon() } }
@@ -249,6 +250,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func transcribeLocally(rec: (url: URL, duration: TimeInterval)) {
+        // Если модель ещё не в памяти — первая загрузка займёт десятки секунд (разовая
+        // подгонка под чип). Показываем HUD, иначе похоже на зависание.
+        let showingPrep = !LocalSTT.shared.isModelLoaded
+        if showingPrep { prepHUD.show(L("hud.preparingModel")) }
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result = Result { () -> Transcription in
                 let signal = try LocalSTT.loadWav16k(rec.url)
@@ -257,6 +262,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             DispatchQueue.main.async {
                 guard let self else { return }
+                if showingPrep { self.prepHUD.hide() }
                 LocalSTT.shared.scheduleIdleUnload()   // вернуть ОЗУ после простоя
                 switch result {
                 case .success(let t):

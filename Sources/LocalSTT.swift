@@ -28,6 +28,14 @@ final class LocalSTT {
     private let queue = DispatchQueue(label: "com.ushakov.voica.localstt")
     private var idleTimer: DispatchSourceTimer?
 
+    // Флаг «модель в памяти» с отдельным замком: читать можно с главного потока, НЕ
+    // блокируясь на очереди, которая в этот момент может грузить модель (30–60 с в
+    // первый раз). Нужен UI, чтобы показать «готовлю модель…» только когда есть ожидание.
+    private let stateLock = NSLock()
+    private var _modelLoaded = false
+    var isModelLoaded: Bool { stateLock.lock(); defer { stateLock.unlock() }; return _modelLoaded }
+    private func setModelLoaded(_ v: Bool) { stateLock.lock(); _modelLoaded = v; stateLock.unlock() }
+
     enum STTError: Error, LocalizedError {
         case modelNotFound, vocabMissing, badOutput
         var errorDescription: String? {
@@ -68,6 +76,7 @@ final class LocalSTT {
             self.idleTimer?.cancel()
             self.idleTimer = nil
             self.model = nil
+            self.setModelLoaded(false)
         }
     }
 
@@ -77,7 +86,7 @@ final class LocalSTT {
             self.idleTimer?.cancel()
             let t = DispatchSource.makeTimerSource(queue: self.queue)
             t.schedule(deadline: .now() + seconds)
-            t.setEventHandler { [weak self] in self?.model = nil }
+            t.setEventHandler { [weak self] in self?.model = nil; self?.setModelLoaded(false) }
             t.resume()
             self.idleTimer = t
         }
@@ -104,6 +113,7 @@ final class LocalSTT {
         cfg.computeUnits = .all   // CPU+GPU+ANE — система выберет сама
         let m = try MLModel(contentsOf: compiled, configuration: cfg)
         model = m
+        setModelLoaded(true)
         return m
     }
 

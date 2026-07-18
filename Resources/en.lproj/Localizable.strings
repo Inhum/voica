@@ -163,6 +163,9 @@
 "model.err.unzip" = "couldn’t unpack the archive";
 "model.err.missing" = "the archive doesn’t contain the model";
 
+/* Local engine HUD */
+"hud.preparingModel" = "Preparing the recognition model…";
+
 /* Offline fallback notification */
 "notify.fallback.title" = "Cloud is unreachable";
 "notify.fallback.body" = "This recording was transcribed with the local model (offline).";

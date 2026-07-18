@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.4] — 2026-07-18 — Local engine: “preparing model” indicator
+
+### Added
+- On the **first local dictation** after launch, a small floating **“Preparing the
+  recognition model…”** HUD appears while Core ML does its one-time on-device model load
+  (tens of seconds). Previously the app looked frozen during this wait. Subsequent
+  dictations, where the model is already in memory, show nothing.
+
 ## [0.9.3] — 2026-07-18 — Fix: AI term correction model (Groq removed qwen3-32b)
 
 ### Fixed
