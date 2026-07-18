@@ -4,7 +4,15 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [0.9.1] — 2026-07-17
+## [0.9.2] — 2026-07-18 — Fix: runs on macOS 13+ again
+
+### Fixed
+- Release builds now run on **macOS 13 and later** as documented. The binary was being
+  stamped with the build machine's macOS as its minimum (so CI-built 0.9.0/0.9.1 refused
+  to launch on anything older than the runner). The build now passes an explicit
+  `-target arm64-apple-macos13.0`, kept in sync with `LSMinimumSystemVersion`.
+
+## [0.9.1] — 2026-07-17 — Both models named everywhere
 
 ### Changed
 - Settings → General now names the **active model** next to the engine switch:
@@ -12,7 +20,7 @@ All notable changes to this project are documented here. The format is based on
 - The About window tagline and the README headers (both languages) mention both engines
   consistently — cloud Groq Whisper and the local GigaAM model.
 
-## [0.9.0] — 2026-07-17
+## [0.9.0] — 2026-07-17 — Local offline engine (GigaAM)
 
 ### Added
 - **Local offline speech recognition (opt-in).** A new engine switch in Settings → General:

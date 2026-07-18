@@ -13,8 +13,15 @@ echo "→ Сборка $NAME ($CONFIG)…"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-SWIFT_FLAGS=(-O -swift-version 5)
-[ "$CONFIG" = "debug" ] && SWIFT_FLAGS=(-Onone -g -swift-version 5)
+# Явный таргет с минимальной версией macOS. БЕЗ него swiftc проставляет minos по SDK
+# машины сборки (на новом macOS/CI-раннере это будет 15/26), и .app не запустится на
+# более старых системах, ХОТЯ Info.plist разрешает 13.0. Держим в синхроне с
+# LSMinimumSystemVersion в Info.plist. arm64 — приложению нужен Apple Silicon (ANE).
+MIN_MACOS=13.0
+TARGET="arm64-apple-macos${MIN_MACOS}"
+
+SWIFT_FLAGS=(-O -swift-version 5 -target "$TARGET")
+[ "$CONFIG" = "debug" ] && SWIFT_FLAGS=(-Onone -g -swift-version 5 -target "$TARGET")
 
 swiftc "${SWIFT_FLAGS[@]}" -o "$APP/Contents/MacOS/$NAME" Sources/*.swift
 

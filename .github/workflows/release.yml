@@ -72,7 +72,13 @@ jobs:
             $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
             /^## \[/ { flag = 0 }
             flag' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          # заголовок релиза — из строки CHANGELOG «## [VER] — ДАТА — Тема»:
+          # берём «Тему» после второго « — ». Нет темы → просто «vX.Y.Z».
+          LABEL="$(grep -m1 "^## \[$VERSION\]" CHANGELOG.md \
+            | awk -F ' — ' 'NF>=3 { out=$3; for (i=4;i<=NF;i++) out=out FS $i; print out }')"
+          TITLE="$GITHUB_REF_NAME"
+          [ -n "$LABEL" ] && TITLE="$GITHUB_REF_NAME — $LABEL"
           gh release create "$GITHUB_REF_NAME" \
-            --title "Voica $VERSION" \
+            --title "$TITLE" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             "build/Voica-$VERSION.dmg"
