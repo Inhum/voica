@@ -178,6 +178,7 @@ final class HistoryWindowController: NSWindowController {
         var parts = [Self.dateFormatter.string(from: r.createdAt)]
         if let l = r.language { parts.append(l) }
         if let d = r.durationSec { parts.append(L("common.seconds", d)) }
+        if let m = r.model, !m.isEmpty { parts.append(m) }   // движок/модель: whisper… / gigaam…
         infoLabel.stringValue = parts.joined(separator: " · ")
 
         copyButton.isEnabled = true

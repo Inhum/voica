@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.5] — 2026-07-19 — History shows the engine/model
+
+### Added
+- History now shows **which engine/model** produced each transcript in the metadata line
+  (date · language · duration · **model**), e.g. `whisper-large-v3-turbo` or
+  `gigaam-v3-e2e-ctc`. Parity with the Windows port, which already displayed it.
+
 ## [0.9.4] — 2026-07-18 — Local engine: “preparing model” indicator
 
 ### Added
