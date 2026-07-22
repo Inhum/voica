@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.6] — 2026-07-19 — Fix: history metadata overlapping buttons
+
+### Fixed
+- In a narrow History window the metadata line (date · language · duration · model) ran
+  under the Copy/Play/Delete buttons. It now truncates before them.
+
 ## [0.9.5] — 2026-07-19 — History shows the engine/model
 
 ### Added

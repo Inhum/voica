@@ -81,6 +81,8 @@ final class HistoryWindowController: NSWindowController {
         infoLabel.translatesAutoresizingMaskIntoConstraints = false
         infoLabel.textColor = .secondaryLabelColor
         infoLabel.font = .systemFont(ofSize: 11)
+        infoLabel.lineBreakMode = .byTruncatingTail    // при узком окне усечь, а не лезть под кнопки
+        infoLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         content.addSubview(infoLabel)
 
         copyButton = makeButton(L("result.copy"), symbol: "doc.on.doc", action: #selector(copyText))
@@ -106,6 +108,7 @@ final class HistoryWindowController: NSWindowController {
             detailScroll.bottomAnchor.constraint(equalTo: copyButton.topAnchor, constant: -10),
 
             infoLabel.leadingAnchor.constraint(equalTo: detailScroll.leadingAnchor, constant: 2),
+            infoLabel.trailingAnchor.constraint(lessThanOrEqualTo: copyButton.leadingAnchor, constant: -8),
             infoLabel.centerYAnchor.constraint(equalTo: copyButton.centerYAnchor),
 
             deleteButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
