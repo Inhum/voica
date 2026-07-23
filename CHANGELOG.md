@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.7] — 2026-07-19 — Local engine: overlapping chunks (no dropped words)
+
+### Fixed
+- The local engine split long recordings at hard 25-second boundaries, so a word or its
+  punctuation could be lost or duplicated at the seam. Adjacent windows now overlap ~2s and
+  the duplicate at the join is trimmed by word match (case/punctuation-insensitive); otherwise
+  a plain space-join. Parity with the Windows port, which fixed this first.
+
 ## [0.9.6] — 2026-07-19 — Fix: history metadata overlapping buttons
 
 ### Fixed

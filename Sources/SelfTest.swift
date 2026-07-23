@@ -75,6 +75,12 @@ enum SelfTest {
         check("ctc unk skipped", dec.decode([0, 1, 2]) == "привет")
         check("ctc empty", dec.decode([4, 4, 4]) == "")
 
+        // Локальный движок: склейка кусков с нахлёстом (де-дуп слов на стыке)
+        check("stitch overlap dedup", LocalSTT.stitch("привет мир как", "мир как дела") == "привет мир как дела")
+        check("stitch no overlap", LocalSTT.stitch("раз два", "три четыре") == "раз два три четыре")
+        check("stitch case+punct", LocalSTT.stitch("развернул Kubernetes через", "Через kubectl.") == "развернул Kubernetes через kubectl.")
+        check("stitch empty", LocalSTT.stitch("", "текст") == "текст" && LocalSTT.stitch("текст", "") == "текст")
+
         // Локальный движок: паритет мел-спектрограммы с Python (testdata/gigaam)
         let td = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             .appendingPathComponent("testdata/gigaam")

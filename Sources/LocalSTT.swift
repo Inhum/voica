@@ -23,6 +23,7 @@ final class LocalSTT {
 
     static let windowSamples = 25 * MelFrontend.sampleRate          // 400_000
     static let windowFrames = MelFrontend.frameCount(samples: windowSamples) // 2499
+    static let overlapSamples = 2 * MelFrontend.sampleRate          // 32_000 — нахлёст соседних окон
 
     private var model: MLModel?
     private let queue = DispatchQueue(label: "com.ushakov.voica.localstt")
@@ -124,17 +125,42 @@ final class LocalSTT {
         guard let decoder = CTCDecoder() else { throw STTError.vocabMissing }
         let m = try queue.sync { try loadedModel() }
 
-        var parts: [String] = []
+        // Длинные записи чанкуем окнами по 25с с нахлёстом ~2с: на стыке дубль слов
+        // убираем (stitch), иначе слово/пунктуация на границе куска терялись или двоились.
+        let step = Self.windowSamples - Self.overlapSamples
+        var result = ""
         var offset = 0
         while offset < signal.count {
-            let chunk = Array(signal[offset ..< min(offset + Self.windowSamples, signal.count)])
-            offset += Self.windowSamples
+            let end = min(offset + Self.windowSamples, signal.count)
+            let chunk = Array(signal[offset ..< end])
             guard chunk.count >= MelFrontend.win else { break }
             let ids = try infer(model: m, chunk: chunk)
             let text = decoder.decode(ids)
-            if !text.isEmpty { parts.append(text) }
+            if !text.isEmpty { result = Self.stitch(result, text) }
+            if end == signal.count { break }
+            offset += step
         }
-        return parts.joined(separator: " ")
+        return result
+    }
+
+    /// Склейка соседних кусков с убиранием дубля на стыке: ищем наибольшее совпадение
+    /// «хвост слов A == начало слов B» (без учёта регистра/пунктуации) и отбрасываем дубль;
+    /// если совпадения нет — обычное соединение через пробел (не хуже прежнего).
+    static func stitch(_ a: String, _ b: String) -> String {
+        if a.isEmpty { return b }
+        if b.isEmpty { return a }
+        let aw = a.split(separator: " ").map(String.init)
+        let bw = b.split(separator: " ").map(String.init)
+        func norm(_ s: String) -> String { s.lowercased().filter { $0.isLetter || $0.isNumber } }
+        let an = aw.map(norm), bn = bw.map(norm)
+        let maxK = min(12, aw.count, bw.count)   // окно поиска нахлёста (~2с речи)
+        var overlap = 0
+        var k = maxK
+        while k >= 1 {
+            if Array(an.suffix(k)) == Array(bn.prefix(k)) { overlap = k; break }
+            k -= 1
+        }
+        return (aw + bw.dropFirst(overlap)).joined(separator: " ")
     }
 
     private func infer(model: MLModel, chunk: [Float]) throws -> [Int] {
