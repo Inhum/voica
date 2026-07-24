@@ -146,3 +146,6 @@ Voica во многом собрана с помощью [Claude Code](https://c
 ## Лицензия
 
 [MIT](LICENSE) © 2026 Ivan Ushakov
+
+Встроенная локальная модель распознавания (GigaAM v3 от Сбера) распространяется под своей
+лицензией MIT — см. [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).

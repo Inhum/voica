@@ -164,3 +164,6 @@ agentic coding tool, as an AI pair-programmer.
 ## License
 
 [MIT](LICENSE) © 2026 Ivan Ushakov
+
+The bundled local recognition model (Sber's GigaAM v3) is redistributed under its own MIT
+license — see [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
