@@ -41,7 +41,9 @@ excellent for Russian), no internet or API key required.
   window — your choice in Settings), and always copied to the clipboard as a fallback.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
-- **Automatic language detection** (works for mixed speech).
+- **Cloud recognition model & language** (Settings → Dictation): Turbo (faster) or Large v3
+  (more accurate); language auto-detects by default (great for mixed speech) or can be forced to
+  Russian/English for short phrases. The local engine is Russian-only.
 - **Vocabulary** — list terms Whisper often mishears (names, jargon, anglicisms) and they're
   passed as a hint on every dictation to bias spelling. Soft limit ~800 characters (Whisper
   only reads the last ~224 tokens of the hint; a live counter in Settings shows the budget).
@@ -99,8 +101,10 @@ The menu-bar icon reflects state: idle → recording (pulsing) → sending to Gr
 
 Organized into tabs (like the system Settings app): **General** — speech engine
 (Cloud / Local), API key (with a Test button), update check, reset to defaults;
-**Dictation** — mode (push-to-talk / toggle), hotkey, output; **Vocabulary** — your terms
-with a live budget counter and the AI correction toggle (with a model availability check);
+**Dictation** — mode (push-to-talk / toggle), hotkey, output, and the cloud recognition model
+(Turbo / Large v3) and language (auto / Russian / English); **Vocabulary** — your terms
+with a live budget counter, the AI correction toggle (with a model availability check),
+and an AI-model picker (recommended-automatic or a specific model from your live list);
 **Data** — audio storage, retention, local model deletion, and **Delete all data**
 (guarded by a random phrase).
 
@@ -123,10 +127,12 @@ Each user gets a free key at [console.groq.com](https://console.groq.com); usage
 to [Groq's Terms of Use](https://groq.com/terms-of-use). Free-tier limits (whisper-large-v3-turbo):
 20 req/min, 2000/day, 7200 audio-seconds/hour — far more than dictation needs.
 
-**If you enable AI term correction** (Settings → Vocabulary), Voica also calls the chat model
-`llama-3.3-70b-versatile`. Some Groq organizations block chat models by default — if the
-status shows *blocked*, allow this model at console.groq.com → Settings → Limits. Otherwise
-the correction silently falls back to the raw transcription (fail-open by design).
+**If you enable AI term correction** (Settings → Vocabulary), Voica also calls a Groq chat
+model. By default it picks the best available one automatically from your live model list, so
+if Groq ever removes or renames a model the app self-heals — no update needed. You can also
+pick a specific model. Some Groq organizations block chat models by default — if the status
+shows *blocked*, allow the chosen model at console.groq.com → Settings → Limits. Otherwise the
+correction silently falls back to the raw transcription (fail-open by design).
 
 ## Build from source
 

@@ -232,7 +232,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 switch result {
                 case .success(let t):
-                    self.handleTranscribed(t, rec: rec, model: GroqClient.model)
+                    self.handleTranscribed(t, rec: rec, model: GroqClient.sttModel)
                 case .failure(let err):
                     // Сеть недоступна, а локальная модель есть на диске —
                     // распознаём офлайн и ненавязчиво предупреждаем.

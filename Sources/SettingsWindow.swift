@@ -29,6 +29,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var modeControl: NSSegmentedControl!
     private var outputControl: NSSegmentedControl!
     private var keyPopup: NSPopUpButton!
+    private var sttModelPopup: NSPopUpButton!
+    private var sttLanguagePopup: NSPopUpButton!
 
     // Vocabulary
     private var vocabTextView: NSTextView!
@@ -37,6 +39,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var llmStatusLabel: NSTextField!
     private var llmStatusIcon: NSImageView!
     private var llmSpinner: NSProgressIndicator!
+    private var chatModelPopup: NSPopUpButton!
+    private var chatModelRow: NSStackView!
 
     // Data
     private var storeAudioToggle: NSButton!
@@ -238,6 +242,35 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         stack.addArrangedSubview(makeHint(L("settings.output.hint")))
 
+        stack.addArrangedSubview(separator())
+
+        // Облачное распознавание: модель (Turbo/Large v3) и язык. Только облако — локальный
+        // движок один (GigaAM, русский). Значения — представленные объекты пунктов.
+        stack.addArrangedSubview(header(L("settings.stt.header")))
+
+        sttModelPopup = NSPopUpButton()
+        for (title, id) in [(L("settings.stt.model.turbo"), "whisper-large-v3-turbo"),
+                            (L("settings.stt.model.large"), "whisper-large-v3")] {
+            sttModelPopup.addItem(withTitle: title)
+            sttModelPopup.lastItem?.representedObject = id
+        }
+        sttModelPopup.target = self
+        sttModelPopup.action = #selector(sttModelChanged)
+        stack.addArrangedSubview(labeledRow(L("settings.stt.model"), sttModelPopup))
+
+        sttLanguagePopup = NSPopUpButton()
+        for (title, code) in [(L("settings.stt.language.auto"), "auto"),
+                              (L("settings.stt.language.ru"), "ru"),
+                              (L("settings.stt.language.en"), "en")] {
+            sttLanguagePopup.addItem(withTitle: title)
+            sttLanguagePopup.lastItem?.representedObject = code
+        }
+        sttLanguagePopup.target = self
+        sttLanguagePopup.action = #selector(sttLanguageChanged)
+        stack.addArrangedSubview(labeledRow(L("settings.stt.language"), sttLanguagePopup))
+
+        stack.addArrangedSubview(makeHint(L("settings.stt.hint")))
+
         return container
     }
 
@@ -278,9 +311,26 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         llmSpinner = makeSpinner()
         llmStatusIcon = makeStatusIcon()
         llmStatusLabel = makeStatusLabel()
+        // Статус может быть длинным (напр. «Model … is blocked — allow it at …») — переносим
+        // по словам, а не обрезаем. Иконку/спиннер прижимаем к первой строке.
+        llmStatusLabel.lineBreakMode = .byWordWrapping
+        llmStatusLabel.maximumNumberOfLines = 0
+        llmStatusLabel.cell?.wraps = true
+        llmStatusLabel.cell?.isScrollable = false
+        llmStatusLabel.preferredMaxLayoutWidth = 400
+        llmStatusLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 400).isActive = true
         let llmStatusRow = NSStackView(views: [llmSpinner, llmStatusIcon, llmStatusLabel])
         llmStatusRow.spacing = 6
+        llmStatusRow.alignment = .top
         stack.addArrangedSubview(llmStatusRow)
+
+        // Выбор chat-модели: «Рекомендуемая (автоматически)» + живой список (power-user).
+        chatModelPopup = NSPopUpButton()
+        chatModelPopup.target = self
+        chatModelPopup.action = #selector(chatModelChanged)
+        chatModelRow = labeledRow(L("settings.vocab.llm.model"), chatModelPopup)
+        chatModelRow.isHidden = true   // показываем только когда ИИ-исправление включено
+        stack.addArrangedSubview(chatModelRow)
 
         stack.addArrangedSubview(makeHint(L("settings.vocab.llm.hint")))
 
@@ -451,6 +501,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
             keyPopup.selectItem(at: idx)
         }
         outputControl.selectedSegment = (Prefs.outputMode == "window") ? 1 : 0
+        selectByRepresented(sttModelPopup, Prefs.sttModel)
+        selectByRepresented(sttLanguagePopup, Prefs.sttLanguage)
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
@@ -562,6 +614,20 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         Prefs.outputMode = (outputControl.selectedSegment == 1) ? "window" : "insert"
     }
 
+    @objc private func sttModelChanged() {
+        Prefs.sttModel = (sttModelPopup.selectedItem?.representedObject as? String) ?? GroqClient.defaultSTTModel
+    }
+
+    @objc private func sttLanguageChanged() {
+        Prefs.sttLanguage = (sttLanguagePopup.selectedItem?.representedObject as? String) ?? "auto"
+    }
+
+    /// Выбирает в поповере пункт с заданным representedObject (фолбэк — первый).
+    private func selectByRepresented(_ popup: NSPopUpButton, _ value: String) {
+        let idx = popup.itemArray.firstIndex { ($0.representedObject as? String) == value }
+        popup.selectItem(at: idx ?? 0)
+    }
+
     @objc private func storeAudioChanged() {
         Prefs.storeAudio = (storeAudioToggle.state == .on)
     }
@@ -664,29 +730,64 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         if Prefs.llmPostProcess { verifyChatModel() } else { clearLLMStatus() }
     }
 
+    /// Пользователь выбрал модель в поповере: сохраняем и перепроверяем (резолв + проба на 403).
+    @objc private func chatModelChanged() {
+        Prefs.chatModel = (chatModelPopup.selectedItem?.representedObject as? String) ?? "auto"
+        verifyChatModel()
+    }
+
     private func verifyChatModel() {
+        chatModelRow.isHidden = false
         llmStatusIcon.isHidden = true
         llmStatusLabel.stringValue = L("settings.vocab.llm.checking")
         llmSpinner.startAnimation(nil)
-        GroqClient.validateChatModel { [weak self] problem in
+        GroqClient.verifyChatModel { [weak self] state, live in
             DispatchQueue.main.async {
                 guard let self else { return }
-                if let problem {
-                    self.applyStatus(icon: self.llmStatusIcon, spinner: self.llmSpinner,
-                                     label: self.llmStatusLabel, text: problem, kind: .warning)
-                } else {
-                    self.applyStatus(icon: self.llmStatusIcon, spinner: self.llmSpinner,
-                                     label: self.llmStatusLabel,
-                                     text: L("settings.vocab.llm.ok"), kind: .success)
+                self.populateChatModelPopup(live)
+                let text: String
+                let kind: StatusKind
+                switch state {
+                case .available(let m): text = L("settings.vocab.llm.using", m);     kind = .success
+                case .switched(let m):  text = L("settings.vocab.llm.switched", m);   kind = .success
+                case .blocked(let m):   text = L("settings.vocab.llm.blocked", m);    kind = .warning
+                case .unavailable:      text = L("settings.vocab.llm.unavailable");   kind = .warning
+                case .error(let e):     text = e;                                     kind = .warning
                 }
+                self.applyStatus(icon: self.llmStatusIcon, spinner: self.llmSpinner,
+                                 label: self.llmStatusLabel, text: text, kind: kind)
             }
         }
+    }
+
+    /// Наполняет поповер: «Рекомендуемая (автоматически)» + живой список. Если список не
+    /// получен (офлайн) — оставляем «авто» (+ текущий ручной выбор, чтобы отражал реальность).
+    private func populateChatModelPopup(_ live: [String]?) {
+        chatModelPopup.removeAllItems()
+        chatModelPopup.addItem(withTitle: L("settings.vocab.llm.model.auto"))
+        chatModelPopup.lastItem?.representedObject = "auto"
+
+        var ids = live ?? []
+        let choice = Prefs.chatModel
+        if choice != "auto", !ids.contains(choice) { ids.insert(choice, at: 0) }
+        if !ids.isEmpty {
+            chatModelPopup.menu?.addItem(.separator())
+            for id in ids {
+                chatModelPopup.addItem(withTitle: id)
+                chatModelPopup.lastItem?.representedObject = id
+            }
+        }
+        chatModelPopup.isEnabled = (live != nil)
+
+        let idx = chatModelPopup.itemArray.firstIndex { ($0.representedObject as? String) == choice }
+        chatModelPopup.selectItem(at: idx ?? 0)
     }
 
     private func clearLLMStatus() {
         llmSpinner.stopAnimation(nil)
         llmStatusIcon.isHidden = true
         llmStatusLabel.stringValue = ""
+        chatModelRow.isHidden = true
     }
 
     // MARK: - Сброс настроек (ключ, история и аудио не трогаются)

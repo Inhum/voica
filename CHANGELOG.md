@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.8] — 2026-07-24 — Model selection: dynamic chat model + recognition model & language
+
+### Added
+- **Recognition model & language** picker (Settings → Dictation, cloud engine): choose Turbo
+  (faster) or Large v3 (more accurate), and force a recognition language (Auto / Russian /
+  English) — forcing helps short phrases that auto-detect gets wrong. The local engine (GigaAM)
+  is Russian-only and ignores these. History records the model actually used.
+
+### Changed
+- The AI term-fixing model is no longer hard-coded. The app now fetches the live model list
+  with your key (`GET /v1/models`), filters chat-capable models, and picks the best available
+  by a priority chain (`llama-3.3-70b-versatile` → `openai/gpt-oss-120b` → `openai/gpt-oss-20b`
+  → `llama-3.1-8b-instant` → `gemma2-9b-it`), falling back to the first available.
+- Vocabulary settings gained an **AI model** picker: “Recommended (automatic)” by default, with
+  the full live list for power users. Visible only when AI term-fixing is on.
+
+### Fixed
+- **Self-healing:** if Groq removes or renames the selected model (as with `qwen/qwen3-32b` in
+  0.9.3, which returned 404), the app now switches to the recommended model on its own — no
+  urgent release needed. A stale saved choice migrates to “automatic”, and a 404 during dictation
+  triggers a background re-resolve so the next dictation uses a live model. Dictation stays
+  fail-open throughout.
+
 ## [0.9.7] — 2026-07-19 — Local engine: overlapping chunks (no dropped words)
 
 ### Fixed

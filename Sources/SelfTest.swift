@@ -141,8 +141,24 @@ enum SelfTest {
         check("hotkey flag function", HotkeyManager.flag(for: 63) == .function)
 
         // Groq — конфигурация
-        check("groq model", GroqClient.model == "whisper-large-v3-turbo")
+        check("groq stt default", GroqClient.defaultSTTModel == "whisper-large-v3-turbo")
+        check("groq stt models list", GroqClient.sttModels.contains("whisper-large-v3"))
         check("groq endpoint", GroqClient.endpoint.host == "api.groq.com")
+
+        // Выбор STT-модели и языка (облако): дефолты, round-trip, отбраковка мусора
+        let savedSTT = UserDefaults.standard.string(forKey: "sttModel")
+        let savedLang = UserDefaults.standard.string(forKey: "sttLanguage")
+        UserDefaults.standard.removeObject(forKey: "sttModel")
+        check("sttModel default turbo", Prefs.sttModel == "whisper-large-v3-turbo")
+        Prefs.sttModel = "whisper-large-v3"
+        check("sttModel round-trip", Prefs.sttModel == "whisper-large-v3")
+        Prefs.sttModel = "bogus-model"
+        check("sttModel rejects unknown", Prefs.sttModel == "whisper-large-v3-turbo")
+        check("sttLanguage default auto", (UserDefaults.standard.string(forKey: "sttLanguage") ?? "auto") == "auto" && Prefs.sttLanguage == "auto")
+        Prefs.sttLanguage = "ru"
+        check("sttLanguage round-trip", Prefs.sttLanguage == "ru")
+        if let savedSTT { Prefs.sttModel = savedSTT } else { UserDefaults.standard.removeObject(forKey: "sttModel") }
+        if let savedLang { Prefs.sttLanguage = savedLang } else { UserDefaults.standard.removeObject(forKey: "sttLanguage") }
 
         // Словарь терминов — подготовка prompt
         check("prompt empty → nil", GroqClient.promptField(from: "   \n ") == nil)
@@ -170,7 +186,29 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
-        check("postprocess model", GroqClient.postProcessModel == "llama-3.3-70b-versatile")
+        // Динамический выбор chat-модели: фильтр, приоритет-цепочка, дефолты, миграция
+        check("chat filter keeps llama", GroqClient.isChatModelID("llama-3.3-70b-versatile"))
+        check("chat filter keeps gpt-oss", GroqClient.isChatModelID("openai/gpt-oss-120b"))
+        check("chat filter drops whisper", !GroqClient.isChatModelID("whisper-large-v3-turbo"))
+        check("chat filter drops tts", !GroqClient.isChatModelID("playai-tts"))
+        check("chat filter drops guard", !GroqClient.isChatModelID("meta-llama/llama-guard-4-12b"))
+        check("pick prefers chain",
+              GroqClient.pickRecommended(from: ["gemma2-9b-it", "llama-3.3-70b-versatile"]) == "llama-3.3-70b-versatile")
+        check("pick falls back to first",
+              GroqClient.pickRecommended(from: ["some-new-model"]) == "some-new-model")
+        check("pick empty → nil", GroqClient.pickRecommended(from: []) == nil)
+
+        let savedModel = UserDefaults.standard.string(forKey: "chatModel")
+        Prefs.chatModel = "auto"
+        check("chatModel default auto", Prefs.chatModel == "auto")
+        check("activeChatModel default seed",
+              GroqClient.activeChatModel == GroqClient.defaultChatModel)
+        Prefs.chatModel = "qwen/qwen3-32b"   // снятая с раздачи → миграция на auto
+        check("retired chat model migrates to auto", Prefs.chatModel == "auto")
+        Prefs.chatModel = "llama-3.1-8b-instant"
+        check("manual chatModel round-trip", Prefs.chatModel == "llama-3.1-8b-instant")
+        check("activeChatModel honors manual", GroqClient.activeChatModel == "llama-3.1-8b-instant")
+        if let savedModel { Prefs.chatModel = savedModel } else { UserDefaults.standard.removeObject(forKey: "chatModel") }
 
         let savedPP = Prefs.llmPostProcess
         Prefs.llmPostProcess = true

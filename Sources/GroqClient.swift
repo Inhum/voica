@@ -44,7 +44,14 @@ enum GroqError: Error, LocalizedError {
 
 enum GroqClient {
     static let endpoint = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions")!
-    static let model = "whisper-large-v3-turbo"
+
+    /// Облачные модели распознавания, предлагаемые в UI. Turbo — быстрее, Large v3 — точнее.
+    /// (distil-* — только английский, для русскоязычного приложения не предлагаем.)
+    static let sttModels = ["whisper-large-v3-turbo", "whisper-large-v3"]
+    static let defaultSTTModel = "whisper-large-v3-turbo"
+
+    /// Модель распознавания, которой шлём СЕЙЧАС (выбор пользователя). Пишется и в историю.
+    static var sttModel: String { Prefs.sttModel }
 
     /// Бюджет символов для поля `prompt`. Whisper учитывает только последние ~224 токена
     /// промпта, поэтому длинный словарь режем, сохраняя ХВОСТ. ~800 симв ≈ этот лимит.
@@ -97,7 +104,88 @@ enum GroqClient {
     // MARK: - LLM-постобработка (исправление терминов из словаря)
 
     static let chatEndpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
-    static let postProcessModel = "llama-3.3-70b-versatile"
+    static let modelsEndpoint = URL(string: "https://api.groq.com/openai/v1/models")!
+
+    /// Приоритет-цепочка авто-выбора: берём первую из этих моделей, что есть в живом списке.
+    /// Если ни одной нет — берём первую доступную вообще (см. `pickRecommended`).
+    static let recommendedChatModels = [
+        "llama-3.3-70b-versatile",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "llama-3.1-8b-instant",
+        "gemma2-9b-it",
+    ]
+
+    /// Сид-дефолт до того, как получен живой список (первый запуск / офлайн).
+    static let defaultChatModel = "llama-3.3-70b-versatile"
+
+    /// Модель, которой реально шлём постобработку СЕЙЧАС: ручной выбор пользователя или,
+    /// в режиме "auto", последняя резолвнутая из живого списка (кэш в Prefs).
+    static var activeChatModel: String {
+        let choice = Prefs.chatModel
+        return choice == "auto" ? Prefs.resolvedChatModel : choice
+    }
+
+    /// Оставляем только chat-совместимые id. Denylist (а не allowlist): у Groq нет поля
+    /// «это chat», зато новые chat-семейства появляются регулярно — исключаем заведомо
+    /// не-chat (whisper/tts/orpheus/guard/embed/...), остальное считаем пригодным.
+    static func isChatModelID(_ id: String) -> Bool {
+        let lower = id.lowercased()
+        let deny = ["whisper", "tts", "orpheus", "guard", "embed", "moderation", "distil"]
+        return !deny.contains { lower.contains($0) }
+    }
+
+    /// Живой список chat-моделей ключом пользователя (`GET /v1/models` + фильтр).
+    /// completion(nil) — не удалось получить (нет ключа/сети/не-2xx).
+    static func fetchChatModels(completion: @escaping ([String]?) -> Void) {
+        guard let key = currentAPIKey() else { return completion(nil) }
+        var req = URLRequest(url: modelsEndpoint)
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 20
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            guard err == nil,
+                  let http = resp as? HTTPURLResponse, http.statusCode == 200,
+                  let data = data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let arr = obj["data"] as? [[String: Any]] else {
+                return completion(nil)
+            }
+            let ids = arr.compactMap { $0["id"] as? String }
+                .filter(isChatModelID)
+                .sorted()
+            completion(ids)
+        }.resume()
+    }
+
+    /// Выбирает лучшую доступную по приоритет-цепочке; фолбэк — первая в (отсортированном) списке.
+    static func pickRecommended(from live: [String]) -> String? {
+        for m in recommendedChatModels where live.contains(m) { return m }
+        return live.first
+    }
+
+    /// Фоновое само-исцеление: если активная модель пропала из живого списка (или мы в auto),
+    /// пересчитать резолв и закэшировать. Дёргается при 404 во время диктовки — следующая
+    /// диктовка уже пойдёт на живую модель, релиз не нужен.
+    static func healChatModelInBackground() {
+        fetchChatModels { live in
+            guard let live = live, !live.isEmpty, let pick = pickRecommended(from: live) else { return }
+            if Prefs.chatModel != "auto", !live.contains(Prefs.chatModel) {
+                Prefs.chatModel = "auto"          // ручной выбор протух → возвращаем к авто
+            }
+            if Prefs.chatModel == "auto" {
+                Prefs.resolvedChatModel = pick
+            }
+        }
+    }
+
+    /// Результат проверки/резолва chat-модели для UI настроек.
+    enum ChatModelState {
+        case available(String)   // модель доступна (показываем какую)
+        case switched(String)    // выбранная исчезла — авто-переключились на эту
+        case blocked(String)     // 403 — разрешить в Groq-org
+        case unavailable         // у ключа нет ни одной подходящей chat-модели
+        case error(String)       // сеть/ключ/прочее
+    }
 
     /// Промпт для исправления терминов. nil — словарь пуст, постобработка не нужна.
     static func postProcessPrompt(text: String, vocabulary: String) -> String? {
@@ -120,16 +208,17 @@ enum GroqClient {
         """
     }
 
-    /// Исправляет искажённые термины из словаря через Groq LLM (llama-3.3-70b-versatile).
+    /// Исправляет искажённые термины из словаря через Groq LLM (`activeChatModel`).
     /// Fail-open: при любой ошибке/таймауте возвращает исходный текст —
-    /// диктовка никогда не блокируется постобработкой.
+    /// диктовка никогда не блокируется постобработкой. Если модель отдала 404 (Groq её
+    /// убрал) — запускаем фоновое само-исцеление, чтобы следующая диктовка пошла на живую.
     static func postProcess(text: String, completion: @escaping (String) -> Void) {
         guard let key = currentAPIKey(),
               let prompt = postProcessPrompt(text: text, vocabulary: Prefs.vocabulary) else {
             return completion(text)
         }
         let payload: [String: Any] = [
-            "model": postProcessModel,
+            "model": activeChatModel,
             "temperature": 0,
             "max_completion_tokens": 4096,
             "messages": [["role": "user", "content": prompt]],
@@ -145,6 +234,9 @@ enum GroqClient {
         req.timeoutInterval = 20
 
         URLSession.shared.dataTask(with: req) { data, resp, err in
+            if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
+                healChatModelInBackground()   // модель убрали — чиним к следующей диктовке
+            }
             guard err == nil,
                   let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
                   let data = data,
@@ -159,19 +251,55 @@ enum GroqClient {
         }.resume()
     }
 
-    /// Проверка доступности chat-модели для ИИ-исправления: лёгкий запрос к
-    /// chat completions. completion(nil) — модель доступна, иначе описание проблемы
-    /// (403 — модель заблокирована в Groq-org, даём подсказку куда идти).
-    static func validateChatModel(_ completion: @escaping (String?) -> Void) {
-        guard let key = currentAPIKey() else { return completion(L("groq.err.noKey")) }
+    /// Резолвит и проверяет chat-модель для ИИ-исправления, при необходимости само-исцеляясь.
+    /// Порядок: тянем живой список → выбираем целевую (ручной выбор, если он ещё жив; иначе
+    /// приоритет-цепочка) → кэшируем резолв → пробным запросом отличаем 200 от 403 (Groq-org).
+    /// Если ручной выбор исчез — молча переключаем на "auto" и сообщаем `.switched`.
+    /// Возвращает состояние И живой список (для наполнения поповера выбора в UI).
+    static func verifyChatModel(_ completion: @escaping (ChatModelState, [String]?) -> Void) {
+        guard currentAPIKey() != nil else { return completion(.error(L("groq.err.noKey")), nil) }
+        fetchChatModels { live in
+            guard let live = live else {
+                // Список не получили (сеть/ключ) — пробуем текущую активную напрямую.
+                return probeModel(activeChatModel) { completion($0, nil) }
+            }
+            guard !live.isEmpty else { return completion(.unavailable, live) }
+
+            let choice = Prefs.chatModel
+            let target: String
+            var healed = false
+            if choice != "auto", live.contains(choice) {
+                target = choice
+            } else if choice != "auto" {
+                guard let pick = pickRecommended(from: live) else { return completion(.unavailable, live) }
+                Prefs.chatModel = "auto"      // выбранная модель исчезла → авто
+                target = pick
+                healed = true
+            } else {
+                guard let pick = pickRecommended(from: live) else { return completion(.unavailable, live) }
+                target = pick
+            }
+            Prefs.resolvedChatModel = target
+
+            probeModel(target) { state in
+                if case .available(let m) = state, healed { completion(.switched(m), live) }
+                else { completion(state, live) }
+            }
+        }
+    }
+
+    /// Пробный лёгкий запрос к chat-модели: отличает 200 (доступна) от 403 (заблокирована
+    /// в Groq-org) и 404 (модель уже убрали) — /models показывает наличие, но не org-доступ.
+    private static func probeModel(_ model: String, _ completion: @escaping (ChatModelState) -> Void) {
+        guard let key = currentAPIKey() else { return completion(.error(L("groq.err.noKey"))) }
         let payload: [String: Any] = [
-            "model": postProcessModel,
+            "model": model,
             "temperature": 0,
             "max_completion_tokens": 8,
             "messages": [["role": "user", "content": "ok"]],
         ]
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
-            return completion(L("groq.validate.noResponse"))
+            return completion(.error(L("groq.validate.noResponse")))
         }
         var req = URLRequest(url: chatEndpoint)
         req.httpMethod = "POST"
@@ -180,14 +308,14 @@ enum GroqClient {
         req.httpBody = body
         req.timeoutInterval = 15
         URLSession.shared.dataTask(with: req) { _, resp, err in
-            if let err = err { return completion(err.localizedDescription) }
-            guard let http = resp as? HTTPURLResponse else { return completion(L("groq.validate.noResponse")) }
+            if let err = err { return completion(.error(err.localizedDescription)) }
+            guard let http = resp as? HTTPURLResponse else { return completion(.error(L("groq.validate.noResponse"))) }
             switch http.statusCode {
-            case 200:  completion(nil)
-            case 403:  completion(L("settings.vocab.llm.blocked", postProcessModel))
-            case 404:  completion(L("settings.vocab.llm.notfound", postProcessModel))
-            case 401:  completion(L("groq.validate.rejected"))
-            default:   completion(L("groq.validate.http", http.statusCode))
+            case 200:  completion(.available(model))
+            case 403:  completion(.blocked(model))
+            case 404:  healChatModelInBackground(); completion(.unavailable)
+            case 401:  completion(.error(L("groq.validate.rejected")))
+            default:   completion(.error(L("groq.validate.http", http.statusCode)))
             }
         }.resume()
     }
@@ -224,10 +352,13 @@ enum GroqClient {
         body.append(audio)
         append("\r\n")
 
-        field("model", model)
+        field("model", sttModel)
         field("response_format", "verbose_json")   // даёт text + language + duration
         field("temperature", "0")
-        // language не задаём — Whisper определяет сам (русский + английские вкрапления)
+        // Язык: "auto" — не задаём (Whisper определяет сам, русский + английские вкрапления);
+        // иначе форсируем ISO-639-1 (помогает коротким фразам с ошибочным авто-детектом).
+        let lang = Prefs.sttLanguage
+        if lang != "auto" { field("language", lang) }
         if let prompt { field("prompt", prompt) }   // словарь терминов: подсказка написаний
 
         append("--\(boundary)--\r\n")
