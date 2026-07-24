@@ -1,4 +1,4 @@
-<p align="center"><a href="README.md">English</a> · <b>Русский</b></p>
+<p align="center"><a href="README.md">English</a> · <b>Русский</b> · <a href="https://github.com/Inhum/voica-win/blob/main/README.ru.md">Версия для Windows →</a></p>
 
 <p align="center">
   <img src="docs/icon.png" width="128" alt="Иконка Voica">
