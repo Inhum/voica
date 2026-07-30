@@ -39,7 +39,7 @@ excellent for Russian), no internet or API key required.
   transliterated in Cyrillic, and the vocabulary hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
   window — your choice in Settings), and always copied to the clipboard as a fallback.
-- **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete.
+- **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete, and export the whole history to Markdown / CSV / JSON.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Cloud recognition model & language** (Settings → Dictation): Turbo (faster) or Large v3
   (more accurate); language auto-detects by default (great for mixed speech) or can be forced to
