@@ -22,7 +22,7 @@
 "alert.recstart.title" = "Couldn’t start recording";
 "alert.recstart.msg" = "Check the microphone and try again.";
 "alert.empty.title" = "Empty";
-"alert.empty.msg" = "Whisper didn’t recognize any speech. Try again.";
+"alert.empty.msg" = "No speech was recognized. Try again.";
 "alert.transcribe.title" = "Transcription error";
 
 /* Result window */
@@ -63,6 +63,7 @@
 "settings.tab.dictation" = "Dictation";
 "settings.tab.vocab" = "Vocabulary";
 "settings.tab.data" = "Data";
+"settings.tab.about" = "About";
 "settings.key.header" = "Groq API Key";
 "settings.key.show" = "Show";
 "settings.key.save" = "Save";
@@ -142,7 +143,14 @@
 /* About */
 "about.version" = "Version %@";
 "about.tagline" = "Voice dictation with punctuation — Groq Whisper in the cloud or GigaAM on this Mac";
+"about.privacy" = "Privacy: no backend, no telemetry. The network is used only for Groq (cloud transcription / AI correction) and GitHub (update checks, one-time model download). With the local engine, audio never leaves this Mac.";
 "about.github" = "GitHub";
+"about.checkNow" = "Check for Updates";
+"about.checking" = "Checking…";
+"about.upToDate" = "You’re on the latest version (%@)";
+"about.updateAvail" = "Update available: %@";
+"about.download" = "Download";
+"about.checkFailed" = "Couldn’t check: %@";
 
 /* Local engine errors */
 "local.err.noModel" = "Local model is not downloaded. Choose the local engine in Settings to download it.";

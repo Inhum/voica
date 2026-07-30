@@ -26,7 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         w.onHotkeySettingsChanged = { [weak self] in self?.applyHotkeySettings() }
         return w
     }()
-    private lazy var aboutWindow = AboutWindowController()
     private let prepHUD = PrepHUD()
 
     private var pulseTimer: Timer?
@@ -335,7 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showHistory()  { historyWindow.reloadAndShow() }
     @objc private func showSettings() { settingsWindow.show() }
 
-    @objc private func showAbout() { aboutWindow.show() }
+    @objc private func showAbout() { settingsWindow.showAbout() }
 
     // MARK: - Обновления
 

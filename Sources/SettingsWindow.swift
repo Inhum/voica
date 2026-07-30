@@ -24,6 +24,12 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var statusIcon: NSImageView!
     private var statusSpinner: NSProgressIndicator!
     private var checkUpdatesToggle: NSButton!
+    // About — проверка обновлений в самой вкладке
+    private var updateCheckBtn: NSButton!
+    private var updateSpinner: NSProgressIndicator!
+    private var updateStatusLabel: NSTextField!
+    private var updateDownloadBtn: NSButton!
+    private var pendingUpdateURL: URL?
 
     // Dictation
     private var modeControl: NSSegmentedControl!
@@ -87,6 +93,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         addTab(L("settings.tab.dictation"), symbol: "mic",                   view: buildDictationTab())
         addTab(L("settings.tab.vocab"),     symbol: "character.book.closed", view: buildVocabularyTab())
         addTab(L("settings.tab.data"),      symbol: "internaldrive",         view: buildDataTab())
+        addTab(L("settings.tab.about"),     symbol: "info.circle",           view: buildAboutTab())
 
         window?.contentViewController = tabs
     }
@@ -199,13 +206,6 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         let hint = makeHint(L("settings.key.hint"))
         stack.addArrangedSubview(hint)
-
-        stack.addArrangedSubview(separator())
-
-        stack.addArrangedSubview(header(L("settings.updates.header")))
-        checkUpdatesToggle = NSButton(checkboxWithTitle: L("settings.updates.onLaunch"),
-                                      target: self, action: #selector(checkUpdatesChanged))
-        stack.addArrangedSubview(checkUpdatesToggle)
 
         stack.addArrangedSubview(separator())
 
@@ -383,6 +383,79 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         return container
     }
 
+    // MARK: - Вкладка About (о программе + обновления)
+
+    private func buildAboutTab() -> NSView {
+        let (container, stack) = tabContainer()
+
+        // Шапка: иконка приложения + имя/версия (компоновка как в Windows-версии)
+        let icon = NSImageView()
+        icon.image = NSApp.applicationIconImage
+        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 56).isActive = true
+
+        let name = NSTextField(labelWithString: "Voica")
+        name.font = .boldSystemFont(ofSize: 20)
+        let ver = NSTextField(labelWithString: L("about.version", appVersion))
+        ver.textColor = .secondaryLabelColor
+        let nameCol = NSStackView(views: [name, ver])
+        nameCol.orientation = .vertical
+        nameCol.alignment = .leading
+        nameCol.spacing = 2
+        let headRow = NSStackView(views: [icon, nameCol])
+        headRow.spacing = 14
+        headRow.alignment = .centerY
+        stack.addArrangedSubview(headRow)
+
+        stack.addArrangedSubview(aboutText(L("about.tagline"), size: 12, color: .labelColor))
+        stack.addArrangedSubview(aboutText(L("about.privacy"), size: 11, color: .secondaryLabelColor))
+
+        stack.addArrangedSubview(separator())
+
+        // Обновления: проверка прямо здесь + авто-проверка при запуске (переехало из General)
+        stack.addArrangedSubview(header(L("settings.updates.header")))
+        updateCheckBtn = NSButton(title: L("about.checkNow"), target: self, action: #selector(checkUpdatesNow))
+        updateSpinner = makeSpinner()
+        updateStatusLabel = makeStatusLabel()
+        let updRow = NSStackView(views: [updateCheckBtn, updateSpinner, updateStatusLabel])
+        updRow.spacing = 8
+        updRow.alignment = .centerY
+        stack.addArrangedSubview(updRow)
+
+        updateDownloadBtn = NSButton(title: L("about.download"), target: self, action: #selector(openUpdatePage))
+        updateDownloadBtn.isHidden = true
+        stack.addArrangedSubview(updateDownloadBtn)
+
+        checkUpdatesToggle = NSButton(checkboxWithTitle: L("settings.updates.onLaunch"),
+                                      target: self, action: #selector(checkUpdatesChanged))
+        stack.addArrangedSubview(checkUpdatesToggle)
+
+        stack.addArrangedSubview(separator())
+
+        // Ссылки + лицензия
+        let gh = NSButton(title: L("about.github"), target: self, action: #selector(openGitHubRepo))
+        gh.bezelStyle = .rounded
+        stack.addArrangedSubview(gh)
+
+        let lic = NSTextField(labelWithString: "© 2026 Ivan Ushakov · MIT License")
+        lic.textColor = .tertiaryLabelColor
+        lic.font = .systemFont(ofSize: 10)
+        stack.addArrangedSubview(lic)
+
+        return container
+    }
+
+    /// Переносимый абзац текста в About (ширина под контент вкладки).
+    private func aboutText(_ s: String, size: CGFloat, color: NSColor) -> NSTextField {
+        let t = NSTextField(wrappingLabelWithString: s)
+        t.font = .systemFont(ofSize: size)
+        t.textColor = color
+        t.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        return t
+    }
+
     // MARK: - UI-помощники
 
     private func header(_ text: String) -> NSTextField {
@@ -490,6 +563,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         window?.makeKeyAndOrderFront(nil)
     }
 
+    /// Открыть настройки сразу на вкладке About (пункт меню-бара «О Voica» ведёт сюда).
+    func showAbout() {
+        populate()
+        tabs.selectedTabViewItemIndex = tabs.tabViewItems.count - 1   // About — последняя
+        NSApp.activate(ignoringOtherApps: true)
+        window?.center()
+        showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
     private func populate() {
         let key = KeyStore.load() ?? ""
         secureKeyField.stringValue = key
@@ -506,6 +589,11 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
+        updateStatusLabel.stringValue = ""
+        updateDownloadBtn.isHidden = true
+        updateCheckBtn.isEnabled = true
+        updateSpinner.stopAnimation(nil)
+        pendingUpdateURL = nil
         vocabTextView.string = Prefs.vocabulary
         updateVocabCounter()
         llmToggle.state = Prefs.llmPostProcess ? .on : .off
@@ -634,6 +722,45 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func checkUpdatesChanged() {
         Prefs.checkUpdatesOnLaunch = (checkUpdatesToggle.state == .on)
+    }
+
+    @objc private func openGitHubRepo() {
+        if let url = URL(string: "https://github.com/Inhum/voica") { NSWorkspace.shared.open(url) }
+    }
+
+    @objc private func openUpdatePage() {
+        if let url = pendingUpdateURL { NSWorkspace.shared.open(url) }
+    }
+
+    /// Ручная проверка обновлений из вкладки About: статус прямо здесь, кнопка «Скачать» при
+    /// наличии новой версии (ведёт на страницу релиза — как и пункт меню-бара).
+    @objc private func checkUpdatesNow() {
+        updateCheckBtn.isEnabled = false
+        updateDownloadBtn.isHidden = true
+        pendingUpdateURL = nil
+        updateSpinner.startAnimation(nil)
+        updateStatusLabel.textColor = .secondaryLabelColor
+        updateStatusLabel.stringValue = L("about.checking")
+        Updater.check { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.updateSpinner.stopAnimation(nil)
+                self.updateCheckBtn.isEnabled = true
+                switch result {
+                case .success(let update?):
+                    self.pendingUpdateURL = update.pageURL
+                    self.updateDownloadBtn.isHidden = false
+                    self.updateStatusLabel.textColor = .controlAccentColor
+                    self.updateStatusLabel.stringValue = L("about.updateAvail", update.version)
+                case .success(nil):
+                    self.updateStatusLabel.textColor = .secondaryLabelColor
+                    self.updateStatusLabel.stringValue = L("about.upToDate", appVersion)
+                case .failure(let err):
+                    self.updateStatusLabel.textColor = .systemOrange
+                    self.updateStatusLabel.stringValue = L("about.checkFailed", err.localizedDescription)
+                }
+            }
+        }
     }
 
     @objc private func retentionChanged() {

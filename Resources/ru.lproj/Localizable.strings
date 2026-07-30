@@ -22,7 +22,7 @@
 "alert.recstart.title" = "Не удалось начать запись";
 "alert.recstart.msg" = "Проверьте микрофон и попробуйте снова.";
 "alert.empty.title" = "Пусто";
-"alert.empty.msg" = "Whisper не распознал речь. Попробуйте ещё раз.";
+"alert.empty.msg" = "Речь не распознана. Попробуйте ещё раз.";
 "alert.transcribe.title" = "Ошибка транскрибации";
 
 /* Окно результата */
@@ -63,6 +63,7 @@
 "settings.tab.dictation" = "Диктовка";
 "settings.tab.vocab" = "Словарь";
 "settings.tab.data" = "Данные";
+"settings.tab.about" = "О программе";
 "settings.key.header" = "Ключ Groq API";
 "settings.key.show" = "Показать";
 "settings.key.save" = "Сохранить";
@@ -142,7 +143,14 @@
 /* О программе */
 "about.version" = "Версия %@";
 "about.tagline" = "Диктовка с пунктуацией — Groq Whisper в облаке или GigaAM на этом Маке";
+"about.privacy" = "Приватность: нет бэкенда и телеметрии. Сеть — только Groq (облачная расшифровка / ИИ-исправление) и GitHub (проверка обновлений, разовая докачка модели). С локальным движком аудио не покидает этот Мак.";
 "about.github" = "GitHub";
+"about.checkNow" = "Проверить обновления";
+"about.checking" = "Проверяю…";
+"about.upToDate" = "Установлена последняя версия (%@)";
+"about.updateAvail" = "Доступна новая версия: %@";
+"about.download" = "Скачать";
+"about.checkFailed" = "Не удалось проверить: %@";
 
 /* Ошибки локального движка */
 "local.err.noModel" = "Локальная модель не скачана. Выберите локальный движок в Настройках, чтобы скачать её.";
