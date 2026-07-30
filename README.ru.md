@@ -65,7 +65,7 @@
   <img src="docs/settings-dictation.png" width="440" alt="Настройки — Диктовка">
   <img src="docs/settings-vocabulary.png" width="440" alt="Настройки — Словарь">
   <img src="docs/settings-data.png" width="440" alt="Настройки — Данные">
-  <img src="docs/about.png" width="440" alt="Настройки — О программе">
+  <img src="docs/settings-about.png" width="440" alt="Настройки — О программе">
 </p>
 
 ## Установка
