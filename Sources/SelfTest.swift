@@ -32,6 +32,35 @@ enum SelfTest {
         }
         check("store count unchanged", Store.shared.all().count == before)
 
+        // HistoryExporter — сериализация в MD / CSV / JSON (чистая, без файлов)
+        let exRecs = [
+            TranscriptRecord(id: 1, createdAt: Date(timeIntervalSince1970: 1_700_000_000),
+                             text: "Привет, мир", language: "ru", durationSec: 2.5,
+                             audioFilename: "a.m4a", model: "gigaam-v3-e2e-ctc"),
+            TranscriptRecord(id: 2, createdAt: Date(timeIntervalSince1970: 1_700_000_100),
+                             text: "line with \"quote\", comma\nand newline", language: nil,
+                             durationSec: nil, audioFilename: nil, model: "whisper-large-v3-turbo"),
+        ]
+        let exMd = HistoryExporter.serialize(exRecs, as: .markdown)
+        check("export md has text", exMd.contains("Привет, мир"))
+        check("export md has model", exMd.contains("gigaam-v3-e2e-ctc"))
+        check("export md has heading", exMd.contains("## "))
+        let exCsv = HistoryExporter.serialize(exRecs, as: .csv)
+        check("export csv header", exCsv.contains("created_at,text,language,duration_sec,model"))
+        check("export csv escapes quotes/commas/newlines",
+              exCsv.contains("\"line with \"\"quote\"\", comma\nand newline\""))
+        let exJson = HistoryExporter.serialize(exRecs, as: .json)
+        if let data = exJson.data(using: .utf8),
+           let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            check("export json count", arr.count == 2)
+            check("export json text", (arr.first?["text"] as? String) == "Привет, мир")
+            check("export json omits nil language", arr.last?["language"] == nil)
+        } else {
+            check("export json parses", false)
+        }
+        check("export format ext",
+              HistoryExporter.Format.markdown.ext == "md" && HistoryExporter.Format.json.ext == "json")
+
         // Store — стресс потокобезопасности: параллельные вставки и чтения с разных потоков.
         // Без серийной очереди это обращалось бы к одному соединению SQLite из многих потоков.
         let stressBefore = Store.shared.all().count

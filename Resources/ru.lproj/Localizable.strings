@@ -38,6 +38,8 @@
 "history.play" = "Воспроизвести";
 "history.stop" = "Стоп";
 "history.delete" = "Удалить";
+"history.export" = "Экспорт…";
+"history.export.format" = "Формат:";
 "history.deleteConfirm.title" = "Удалить запись?";
 "history.deleteConfirm.msg" = "Запись и её аудио будут удалены без возможности восстановления.";
 

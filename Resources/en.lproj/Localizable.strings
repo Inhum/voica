@@ -38,6 +38,8 @@
 "history.play" = "Play";
 "history.stop" = "Stop";
 "history.delete" = "Delete";
+"history.export" = "Export…";
+"history.export.format" = "Format:";
 "history.deleteConfirm.title" = "Delete this entry?";
 "history.deleteConfirm.msg" = "The entry and its audio will be permanently deleted.";
 
