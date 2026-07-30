@@ -61,8 +61,10 @@ excellent for Russian), no internet or API key required.
 
 <p align="center">
   <img src="docs/settings-general.png" width="440" alt="Settings — General">
+  <img src="docs/settings-dictation.png" width="440" alt="Settings — Dictation">
   <img src="docs/settings-vocabulary.png" width="440" alt="Settings — Vocabulary">
-  <img src="docs/about.png" width="360" alt="About window">
+  <img src="docs/settings-data.png" width="440" alt="Settings — Data">
+  <img src="docs/about.png" width="440" alt="Settings — About">
 </p>
 
 ## Install

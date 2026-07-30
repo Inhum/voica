@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.9] — 2026-07-30 — About tab + history export
+
+### Added
+- **History export** — an “Export…” button in the History window exports the whole history to
+  **Markdown, CSV, or JSON** (pick the format in the save dialog). Text + metadata (date, language,
+  duration, engine/model); CSV includes a UTF-8 BOM for Excel and RFC-4180 escaping, JSON also
+  carries the id and audio filename. The audio itself isn’t included.
+- **About tab** — About moved from a separate window into a fifth Settings tab: icon, version,
+  a privacy summary, an in-tab “Check for Updates” (with a Download link when a newer version is
+  available) and the “check on launch” toggle, plus GitHub and license. The menu-bar “About Voica”
+  item now opens this tab.
+
+### Fixed
+- The “nothing recognized” message no longer says “Whisper” when the local GigaAM engine is
+  active — it’s now engine-neutral.
+
 ## [0.9.8] — 2026-07-24 — Model selection: dynamic chat model + recognition model & language
 
 ### Added

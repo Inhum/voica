@@ -62,8 +62,10 @@
 
 <p align="center">
   <img src="docs/settings-general.png" width="440" alt="Настройки — Основные">
+  <img src="docs/settings-dictation.png" width="440" alt="Настройки — Диктовка">
   <img src="docs/settings-vocabulary.png" width="440" alt="Настройки — Словарь">
-  <img src="docs/about.png" width="360" alt="Окно «О программе»">
+  <img src="docs/settings-data.png" width="440" alt="Настройки — Данные">
+  <img src="docs/about.png" width="440" alt="Настройки — О программе">
 </p>
 
 ## Установка
