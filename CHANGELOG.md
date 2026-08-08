@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.10] — 2026-08-08 — Recording bar, double-tap to start, batch delete
+
+### Added
+- **Recording bar** — a floating capsule at the bottom of the screen shows that dictation is on:
+  a live waveform plus **×** (cancel — the recording is dropped, nothing is transcribed) and
+  **✓** (stop and transcribe). When recognition starts it turns into a spinner with
+  “Recognizing…”, so one indicator covers the whole run and the menu-bar icon stays untouched.
+  Turn it off in Settings → Dictation to get the old behaviour back (pulsing menu-bar icon).
+- **Cancel a dictation** — previously there was no way to abort; the recording is discarded
+  without being sent anywhere.
+- **Double-tap to start** (Toggle mode, on by default) — press the key twice within 0.35 s to
+  start; a single press still stops. Fixes accidental starts. Switch it off in
+  Settings → Dictation. Push-to-talk is unaffected.
+- **Multi-select in History** — pick several entries with Cmd/Shift (and Cmd+A), then delete
+  them in one go; the confirmation tells you how many. The Delete key and a right-click menu do
+  the same. With more than one entry selected the detail pane shows the count.
+- **“Support the project”** in Settings → About — a link to [Boosty](https://boosty.to/voica).
+  Voica stays free in full: no subscription, no paid features, donations are entirely optional.
+
+### Fixed
+- **The menu-bar icon was always monochrome** — the recording and recognition states were meant
+  to be tinted since the very first versions, but the tint was silently dropped: a status-item
+  button ignores `contentTintColor` for both template and non-template images. The colour now
+  comes from the symbol’s own palette.
+- The model-preparation HUD (“Preparing the recognition model…”) had square corners — a rounded
+  layer doesn’t clip a behind-window blur. It now shares its look with the recording bar.
+
 ## [0.9.9] — 2026-07-30 — About tab + history export
 
 ### Added

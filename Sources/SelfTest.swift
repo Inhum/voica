@@ -79,6 +79,21 @@ enum SelfTest {
         }
         check("store concurrent cleanup", Store.shared.all().count == stressBefore)
 
+        // Store — удаление пачкой (мультивыделение в History): уходят ровно выбранные записи.
+        let batchIDs = (0..<5).compactMap {
+            Store.shared.insert(text: "__voica_batch__\($0)", language: nil,
+                                duration: nil, model: "batch", audioTempURL: nil)
+        }
+        check("store batch insert", batchIDs.count == 5)
+        Store.shared.delete(ids: Array(batchIDs.prefix(3)))
+        let afterBatch = Store.shared.all().map(\.id)
+        check("store batch delete removes picked", batchIDs.prefix(3).allSatisfy { !afterBatch.contains($0) })
+        check("store batch delete keeps rest", batchIDs.suffix(2).allSatisfy { afterBatch.contains($0) })
+        Store.shared.delete(ids: Array(batchIDs.suffix(2)))
+        check("store batch delete cleanup", Store.shared.all().count == stressBefore)
+        Store.shared.delete(ids: [])   // пустой список — не падаем и ничего не трогаем
+        check("store batch delete empty is noop", Store.shared.all().count == stressBefore)
+
         // Prefs — round-trip с восстановлением
         let savedDays = Prefs.retentionDays
         Prefs.retentionDays = 7
@@ -89,6 +104,22 @@ enum SelfTest {
         Prefs.outputMode = "window"
         check("prefs outputMode round-trip", Prefs.outputMode == "window")
         Prefs.outputMode = savedOutput
+
+        // Плашка записи и двойной тап — обе ВКЛючены по умолчанию (защита от случайного старта
+        // и заметный индикатор), поэтому дефолт проверяем явно: тихая смена сломала бы UX.
+        let savedHUD = Prefs.recordingHUD
+        UserDefaults.standard.removeObject(forKey: "recordingHUD")
+        check("prefs recordingHUD defaults on", Prefs.recordingHUD)
+        Prefs.recordingHUD = false
+        check("prefs recordingHUD round-trip", !Prefs.recordingHUD)
+        Prefs.recordingHUD = savedHUD
+
+        let savedTap = Prefs.toggleDoubleTap
+        UserDefaults.standard.removeObject(forKey: "toggleDoubleTap")
+        check("prefs toggleDoubleTap defaults on", Prefs.toggleDoubleTap)
+        Prefs.toggleDoubleTap = false
+        check("prefs toggleDoubleTap round-trip", !Prefs.toggleDoubleTap)
+        Prefs.toggleDoubleTap = savedTap
 
         // Updater — сравнение версий и нормализация тега
         check("update isNewer patch", Updater.isNewer("0.4.1", than: "0.4.0"))

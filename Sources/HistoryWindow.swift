@@ -50,10 +50,19 @@ final class HistoryWindowController: NSWindowController {
         listScroll.hasVerticalScroller = true
         listScroll.borderType = .bezelBorder
 
-        let table = NSTableView()
+        let table = HistoryTableView()
         table.headerView = nil
         table.rowHeight = 50
         table.usesAutomaticRowHeights = false
+        // Мультивыделение: Cmd/Shift/Cmd+A начинают работать сами, обрабатывать их не нужно.
+        table.allowsMultipleSelection = true
+        table.onDeleteKey = { [weak self] in self?.deleteSelected() }
+        table.menu = {
+            let m = NSMenu()
+            m.addItem(NSMenuItem(title: L("history.delete"), action: #selector(deleteSelected), keyEquivalent: ""))
+            m.items.forEach { $0.target = self }
+            return m
+        }()
         let col = NSTableColumn(identifier: .init("entry"))
         col.resizingMask = .autoresizingMask
         table.addTableColumn(col)
@@ -227,13 +236,31 @@ final class HistoryWindowController: NSWindowController {
         } else {
             let row = min(max(tableView.selectedRow, 0), records.count - 1)
             tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
-            updateDetail(records[row])
+            updateDetailForSelection()
         }
     }
 
     private var selectedRecord: TranscriptRecord? {
         let row = tableView.selectedRow
         return records.indices.contains(row) ? records[row] : nil
+    }
+
+    private var selectedRecords: [TranscriptRecord] {
+        tableView.selectedRowIndexes.compactMap { records.indices.contains($0) ? records[$0] : nil }
+    }
+
+    /// Правая панель по текущему выделению. Текст, копирование и проигрывание осмысленны только
+    /// для одной записи, поэтому при пачке показываем счётчик и оставляем активным лишь удаление.
+    private func updateDetailForSelection() {
+        let picked = selectedRecords
+        guard picked.count > 1 else { updateDetail(picked.first); return }
+        stopPlayback()
+        emptyLabel.isHidden = true
+        detailText.string = ""
+        infoLabel.stringValue = L("history.selected", picked.count)
+        copyButton.isEnabled = false
+        playButton.isEnabled = false
+        deleteButton.isEnabled = true
     }
 
     private func updateDetail(_ record: TranscriptRecord?) {
@@ -305,15 +332,19 @@ final class HistoryWindowController: NSWindowController {
     }
 
     @objc private func deleteSelected() {
-        guard let r = selectedRecord else { return }
+        let picked = selectedRecords
+        guard !picked.isEmpty else { return }
         let alert = NSAlert()
-        alert.messageText = L("history.deleteConfirm.title")
+        // Для пачки — счётчик в заголовке: сколько именно записей исчезнет.
+        alert.messageText = picked.count == 1
+            ? L("history.deleteConfirm.title")
+            : L("history.deleteConfirm.titleMany", picked.count)
         alert.informativeText = L("history.deleteConfirm.msg")
         alert.addButton(withTitle: L("common.delete"))
         alert.addButton(withTitle: L("common.cancel"))
         alert.buttons.first?.hasDestructiveAction = true
         guard alert.runModal() == .alertFirstButtonReturn else { return }
-        Store.shared.delete(id: r.id)
+        Store.shared.delete(ids: picked.map(\.id))
         reload()
     }
 }
@@ -353,7 +384,22 @@ extension HistoryWindowController: NSTableViewDataSource, NSTableViewDelegate {
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
-        updateDetail(selectedRecord)
+        updateDetailForSelection()
+    }
+}
+
+/// Таблица, отдающая клавишу Delete/Backspace наружу: удалять выделенное с клавиатуры —
+/// ожидаемое поведение маковского списка, особенно когда выделять можно пачкой.
+final class HistoryTableView: NSTableView {
+    var onDeleteKey: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        let deleteKeys: Set<UInt16> = [51, 117]   // Backspace, Forward Delete
+        if deleteKeys.contains(event.keyCode), selectedRow >= 0 {
+            onDeleteKey?()
+            return
+        }
+        super.keyDown(with: event)
     }
 }
 

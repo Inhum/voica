@@ -29,7 +29,13 @@ excellent for Russian), no internet or API key required.
 
 ## Features
 
-- **Hotkey dictation** — push-to-talk (hold) or toggle (press to start / stop).
+- **Hotkey dictation** — push-to-talk (hold) or toggle (press to start / stop). In toggle mode a
+  **double tap starts** the recording (a single press stops it) so you never start one by
+  accident — switchable in Settings.
+- **A recording bar** at the bottom of the screen while dictation runs: a live waveform plus
+  cancel and stop buttons, turning into “Recognizing…” until the text is ready. Cancel drops the
+  recording without sending it anywhere. Prefer it out of the way? Turn it off and the menu-bar
+  icon takes over.
 - **Local offline engine (optional)** — switch Settings → General to *Local (offline)* and
   dictation runs entirely on your Mac via Core ML on the Apple Neural Engine (Sber's
   [GigaAM v3](https://github.com/salute-developers/GigaAM) model, MIT, punctuation out of
@@ -39,7 +45,9 @@ excellent for Russian), no internet or API key required.
   transliterated in Cyrillic, and the vocabulary hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
   window — your choice in Settings), and always copied to the clipboard as a fallback.
-- **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete, and export the whole history to Markdown / CSV / JSON.
+- **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete
+  (one entry or a batch selected with Cmd/Shift), and export the whole history to
+  Markdown / CSV / JSON.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Cloud recognition model & language** (Settings → Dictation): Turbo (faster) or Large v3
   (more accurate); language auto-detects by default (great for mixed speech) or can be forced to
@@ -97,14 +105,18 @@ Voica downloads the model (~400 MB, once) and no key is needed at all.
 - **Toggle**: one press of the chosen key starts, another stops.
 - Or click **Dictate** in the menu (manual start/stop, no hotkey needed).
 
-The menu-bar icon reflects state: idle → recording (pulsing) → sending to Groq.
+While a dictation runs, a bar appears at the bottom of the screen — a live waveform with a
+cancel and a stop button — and switches to “Recognizing…” until the text lands. If you turn the
+bar off, the menu-bar icon takes the job instead: pulsing red while recording, blue while
+recognizing.
 
 ## Settings
 
 Organized into tabs (like the system Settings app): **General** — speech engine
 (Cloud / Local), API key (with a Test button), update check, reset to defaults;
-**Dictation** — mode (push-to-talk / toggle), hotkey, output, and the cloud recognition model
-(Turbo / Large v3) and language (auto / Russian / English); **Vocabulary** — your terms
+**Dictation** — mode (push-to-talk / toggle), hotkey, double-tap to start, the recording bar,
+output, and the cloud recognition model (Turbo / Large v3) and language
+(auto / Russian / English); **Vocabulary** — your terms
 with a live budget counter, the AI correction toggle (with a model availability check),
 and an AI-model picker (recommended-automatic or a specific model from your live list);
 **Data** — audio storage, retention, local model deletion, and **Delete all data**
@@ -157,6 +169,12 @@ can't stably identify an ad-hoc app). With the certificate it persists. See
 
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). This is a
 spare-time project, so responses may be slow and not every feature request will be accepted.
+
+## Support the project
+
+Voica is free and stays free — every feature, no subscription, no paid tier. If it saves you
+time and you'd like to chip in, there's [Boosty](https://boosty.to/voica). Entirely optional,
+and nothing in the app depends on it.
 
 ## Acknowledgements
 

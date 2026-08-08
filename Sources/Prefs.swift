@@ -20,6 +20,8 @@ enum Prefs {
         static let resolvedChatModel = "resolvedChatModel"  // кэш последней резолвнутой конкретной модели
         static let sttModel      = "sttModel"        // облачная модель распознавания (whisper-*)
         static let sttLanguage   = "sttLanguage"     // "auto" | ISO-639-1 (ru/en/…) — только облако
+        static let recordingHUD  = "recordingHUD"    // показывать плашку записи (иначе — пульс иконки)
+        static let toggleDoubleTap = "toggleDoubleTap" // Toggle: старт двойным тапом (иначе одиночным)
     }
 
     /// Модели chat-completions, которые Groq снял с раздачи (404). Сохранённый выбор такой
@@ -129,11 +131,26 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.sttLanguage) }
     }
 
+    /// Показывать плавающую плашку записи (волна + отмена/стоп) внизу экрана. По умолчанию да.
+    /// Если выкл — вместо плашки пульсирует иконка в менюбаре (старое поведение).
+    static var recordingHUD: Bool {
+        get { d.object(forKey: Key.recordingHUD) == nil ? true : d.bool(forKey: Key.recordingHUD) }
+        set { d.set(newValue, forKey: Key.recordingHUD) }
+    }
+
+    /// В режиме Toggle стартовать запись двойным тапом (одиночный — стоп). По умолчанию да —
+    /// защита от случайного старта. Если выкл — старт одиночным тапом (как было).
+    static var toggleDoubleTap: Bool {
+        get { d.object(forKey: Key.toggleDoubleTap) == nil ? true : d.bool(forKey: Key.toggleDoubleTap) }
+        set { d.set(newValue, forKey: Key.toggleDoubleTap) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
          Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess, Key.sttEngine,
-         Key.chatModel, Key.resolvedChatModel, Key.sttModel, Key.sttLanguage]
+         Key.chatModel, Key.resolvedChatModel, Key.sttModel, Key.sttLanguage,
+         Key.recordingHUD, Key.toggleDoubleTap]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

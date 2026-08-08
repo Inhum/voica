@@ -41,7 +41,9 @@
 "history.export" = "Export…";
 "history.export.format" = "Format:";
 "history.deleteConfirm.title" = "Delete this entry?";
+"history.deleteConfirm.titleMany" = "Delete the selected entries (%d)?";
 "history.deleteConfirm.msg" = "The entry and its audio will be permanently deleted.";
+"history.selected" = "Selected entries: %d";
 
 /* Common */
 "common.delete" = "Delete";
@@ -88,6 +90,10 @@
 "settings.output.insert" = "Insert into field";
 "settings.output.window" = "Show window";
 "settings.output.hint" = "Insert pastes the text where your cursor is (needs Accessibility). It’s always copied to the clipboard too.";
+"settings.rec.hud" = "Show a recording bar at the bottom of the screen";
+"settings.rec.hud.hint" = "A floating bar with a live waveform and cancel/stop buttons, so you always see recording is on. Turn it off to pulse the menu-bar icon instead.";
+"settings.rec.doubletap" = "Double-tap to start";
+"settings.rec.doubletap.hint" = "Prevents accidental starts: in Toggle mode, press the key twice to start (a single press stops). Turn off to start on a single press. Note: a double-tap can clash with other apps’ shortcuts.";
 "settings.stt.header" = "Cloud Recognition";
 "settings.stt.model" = "Model:";
 "settings.stt.model.turbo" = "whisper-large-v3-turbo — faster";
@@ -147,6 +153,8 @@
 "about.tagline" = "Voice dictation with punctuation — Groq Whisper in the cloud or GigaAM on this Mac";
 "about.privacy" = "Privacy: no backend, no telemetry. The network is used only for Groq (cloud transcription / AI correction) and GitHub (update checks, one-time model download). With the local engine, audio never leaves this Mac.";
 "about.github" = "GitHub";
+"about.support" = "Support the project";
+"about.support.hint" = "Voica is free and stays free — every feature, no subscription. If it saves you time, you can chip in on Boosty.";
 "about.checkNow" = "Check for Updates";
 "about.checking" = "Checking…";
 "about.upToDate" = "You’re on the latest version (%@)";
@@ -189,6 +197,7 @@
 
 /* Local engine HUD */
 "hud.preparingModel" = "Preparing the recognition model…";
+"hud.recognizing" = "Recognizing…";
 
 /* Offline fallback notification */
 "notify.fallback.title" = "Cloud is unreachable";

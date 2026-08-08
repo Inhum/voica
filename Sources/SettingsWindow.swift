@@ -37,6 +37,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var keyPopup: NSPopUpButton!
     private var sttModelPopup: NSPopUpButton!
     private var sttLanguagePopup: NSPopUpButton!
+    private var recordingHUDToggle: NSButton!
+    private var doubleTapToggle: NSButton!
 
     // Vocabulary
     private var vocabTextView: NSTextView!
@@ -233,7 +235,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         keyPopup.addItems(withTitles: modifierChoices.map { $0.0 })
         keyPopup.target = self
         keyPopup.action = #selector(keyChoiceChanged)
-        stack.addArrangedSubview(labeledRow(L("settings.keyChoice.label"), keyPopup))
+        // Компактный чекбокс «двойной тап» справа от выбора клавиши; пояснение — в ⓘ (по наведению).
+        doubleTapToggle = NSButton(checkboxWithTitle: L("settings.rec.doubletap"),
+                                   target: self, action: #selector(doubleTapChanged))
+        let keyRow = labeledRow(L("settings.keyChoice.label"), keyPopup)
+        keyRow.setCustomSpacing(20, after: keyPopup)   // отодвинуть чекбокс правее от попапа
+        keyRow.addArrangedSubview(doubleTapToggle)
+        keyRow.addArrangedSubview(InfoDot(L("settings.rec.doubletap.hint")))
+        stack.addArrangedSubview(keyRow)
 
         outputControl = NSSegmentedControl(labels: [L("settings.output.insert"), L("settings.output.window")],
                                            trackingMode: .selectOne, target: self,
@@ -241,6 +250,13 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         stack.addArrangedSubview(labeledRow(L("settings.output.label"), outputControl))
 
         stack.addArrangedSubview(makeHint(L("settings.output.hint")))
+
+        recordingHUDToggle = NSButton(checkboxWithTitle: L("settings.rec.hud"),
+                                      target: self, action: #selector(recordingHUDChanged))
+        let hudRow = NSStackView(views: [recordingHUDToggle, InfoDot(L("settings.rec.hud.hint"))])
+        hudRow.spacing = 6
+        hudRow.alignment = .centerY
+        stack.addArrangedSubview(hudRow)
 
         stack.addArrangedSubview(separator())
 
@@ -434,10 +450,18 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         stack.addArrangedSubview(separator())
 
-        // Ссылки + лицензия
+        // Ссылки + лицензия. Поддержка — донат, приложение остаётся бесплатным целиком:
+        // подписки и платных функций нет, поэтому кнопка стоит рядом с GitHub, а не выше.
         let gh = NSButton(title: L("about.github"), target: self, action: #selector(openGitHubRepo))
         gh.bezelStyle = .rounded
-        stack.addArrangedSubview(gh)
+        let support = NSButton(title: L("about.support"), target: self, action: #selector(openSupportPage))
+        support.bezelStyle = .rounded
+        let linksRow = NSStackView(views: [gh, support])
+        linksRow.spacing = 8
+        linksRow.alignment = .centerY
+        stack.addArrangedSubview(linksRow)
+
+        stack.addArrangedSubview(aboutText(L("about.support.hint"), size: 11, color: .secondaryLabelColor))
 
         let lic = NSTextField(labelWithString: "© 2026 Ivan Ushakov · MIT License")
         lic.textColor = .tertiaryLabelColor
@@ -586,6 +610,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         outputControl.selectedSegment = (Prefs.outputMode == "window") ? 1 : 0
         selectByRepresented(sttModelPopup, Prefs.sttModel)
         selectByRepresented(sttLanguagePopup, Prefs.sttLanguage)
+        recordingHUDToggle.state = Prefs.recordingHUD ? .on : .off
+        doubleTapToggle.state = Prefs.toggleDoubleTap ? .on : .off
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
@@ -710,6 +736,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         Prefs.sttLanguage = (sttLanguagePopup.selectedItem?.representedObject as? String) ?? "auto"
     }
 
+    @objc private func recordingHUDChanged() {
+        Prefs.recordingHUD = (recordingHUDToggle.state == .on)
+    }
+
+    @objc private func doubleTapChanged() {
+        Prefs.toggleDoubleTap = (doubleTapToggle.state == .on)
+    }
+
     /// Выбирает в поповере пункт с заданным representedObject (фолбэк — первый).
     private func selectByRepresented(_ popup: NSPopUpButton, _ value: String) {
         let idx = popup.itemArray.firstIndex { ($0.representedObject as? String) == value }
@@ -726,6 +760,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func openGitHubRepo() {
         if let url = URL(string: "https://github.com/Inhum/voica") { NSWorkspace.shared.open(url) }
+    }
+
+    @objc private func openSupportPage() {
+        if let url = URL(string: "https://boosty.to/voica") { NSWorkspace.shared.open(url) }
     }
 
     @objc private func openUpdatePage() {

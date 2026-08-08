@@ -27,8 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return w
     }()
     private let prepHUD = PrepHUD()
-
+    private let recordingHUD = RecordingHUD()
     private var pulseTimer: Timer?
+    private var lastIdleTapAt: Date?   // для «двойного тапа» в режиме Toggle
+
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
     private var updateItem: NSMenuItem!
@@ -57,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.ensureAccessibility(prompt: true)
         hotkey.onStart  = { [weak self] in self?.startDictation() }
         hotkey.onStop   = { [weak self] in self?.stopDictation() }
-        hotkey.onToggle = { [weak self] in self?.toggleDictation() }
+        hotkey.onToggle = { [weak self] in self?.hotkeyToggle() }
         applyHotkeySettings()
         hotkey.start()
 
@@ -147,15 +149,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let (symbol, tint): (String, NSColor?) = {
             switch state {
             case .idle:         return ("mic", nil)
-            case .recording:    return ("mic.fill", .systemRed)
-            case .transcribing: return ("waveform", .systemBlue)
+            // При включённой плашке она — единственный индикатор Voica от старта записи до
+            // готового текста: иконку в менюбаре не трогаем вовсе, чтобы не рябило двумя
+            // сигналами сразу. Цветные состояния — только в режиме-фолбэке (плашка выключена):
+            // красный микрофон пульсирует на записи, синяя волна горит на распознавании.
+            case .recording:    return Prefs.recordingHUD ? ("mic", nil) : ("mic.fill", .systemRed)
+            case .transcribing: return Prefs.recordingHUD ? ("mic", nil) : ("waveform", .systemBlue)
             }
         }()
-        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Voica")
-        button.image?.isTemplate = (tint == nil)
-        button.contentTintColor = tint
+        // Цвет иконки в менюбаре задаём ТОЛЬКО палитрой самого символа. contentTintColor тут
+        // бесполезен в обе стороны: template-картинку менюбар всё равно перекрашивает под свою
+        // тему, а не-template рисуется своими цветами и оттенок игнорирует — оба состояния
+        // выходили монохромными. paletteColors красит символ на уровне изображения, и оно
+        // приходит уже не-template (isTemplate = false), так что менюбар его не перебивает.
+        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: "Voica")
+        if let tint {
+            button.image = base?.withSymbolConfiguration(.init(paletteColors: [tint]))
+        } else {
+            button.image = base
+            button.image?.isTemplate = true   // покой — обычная иконка под тему менюбара
+        }
+        button.contentTintColor = nil
 
-        if state == .recording { startPulse() } else { stopPulse() }
+        // Индикатор диктовки: по умолчанию — плавающая плашка снизу (её проще заметить, чем пульс
+        // иконки, который путали с системной оранжевой точкой). Она же берёт на себя и стадию
+        // распознавания. Если плашка выключена в настройках — работает старый путь через иконку
+        // менюбара: пульс на записи, синяя волна на распознавании.
+        switch state {
+        case .recording:
+            if Prefs.recordingHUD {
+                stopPulse()
+                recordingHUD.show(onCancel: { [weak self] in self?.cancelDictation() },
+                                  onStop:   { [weak self] in self?.stopDictation() })
+            } else {
+                recordingHUD.hide()
+                startPulse()
+            }
+        case .transcribing:
+            stopPulse()   // пульс — только про запись; распознавание показывается статикой
+            if Prefs.recordingHUD { recordingHUD.showTranscribing() } else { recordingHUD.hide() }
+        case .idle:
+            recordingHUD.hide()
+            stopPulse()
+        }
     }
 
     private func startPulse() {
@@ -178,11 +214,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Диктовка
 
+    /// Пункт меню «Dictate» — прямое действие, без «двойного тапа».
     @objc private func toggleDictation() {
         switch state {
         case .idle:         startDictation()
         case .recording:    stopDictation()
         case .transcribing: break
+        }
+    }
+
+    /// Хоткей в режиме Toggle: стоп — одиночным нажатием; старт — двойным тапом (если включено),
+    /// иначе одиночным. Двойной тап защищает от случайного старта (пункт «переключение»).
+    private func hotkeyToggle() {
+        switch state {
+        case .recording:    stopDictation()
+        case .transcribing: break
+        case .idle:
+            guard Prefs.toggleDoubleTap else { startDictation(); return }
+            let now = Date()
+            if let last = lastIdleTapAt, now.timeIntervalSince(last) < 0.35 {
+                lastIdleTapAt = nil
+                startDictation()
+            } else {
+                lastIdleTapAt = now   // ждём второе нажатие; одиночное ничего не запускает
+            }
         }
     }
 
@@ -205,6 +260,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 LocalSTT.shared.preload()
             }
         }
+    }
+
+    /// Отмена диктовки из плашки (кнопка ×): останавливаем запись и выбрасываем — без распознавания.
+    private func cancelDictation() {
+        guard state == .recording else { return }
+        if let rec = recorder.stop() { try? FileManager.default.removeItem(at: rec.url) }
+        state = .idle
     }
 
     private func stopDictation() {

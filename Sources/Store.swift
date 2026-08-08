@@ -168,6 +168,20 @@ final class Store {
         sqlite3_step(stmt)
     }
 
+    /// Удаление пачкой (мультивыделение в History). Один заход на очередь и ОДНО чтение
+    /// таблицы на всю пачку: `_delete(id:)` в цикле вычитывал бы `_all()` на каждую запись.
+    func delete(ids: [Int64]) {
+        guard !ids.isEmpty else { return }
+        queue.sync {
+            let doomed = Set(ids)
+            for rec in _all() where doomed.contains(rec.id) {
+                if let url = audioURL(for: rec) { try? FileManager.default.removeItem(at: url) }
+            }
+            let list = ids.map(String.init).joined(separator: ",")   // только Int64, инъекция невозможна
+            exec("DELETE FROM transcriptions WHERE id IN (\(list));")
+        }
+    }
+
     /// Полная очистка (для кнопки Delete all data).
     func deleteAll() {
         queue.sync {
