@@ -56,7 +56,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var deleteModelBtn: NSButton!
     private var modelSizeLabel: NSTextField!
 
-    private var tabs: NSTabViewController!
+    private var tabs: FittingTabViewController!
 
     private enum StatusKind { case neutral, success, error, warning }
 
@@ -87,9 +87,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     // MARK: - Вкладки
 
     private func buildUI() {
-        tabs = NSTabViewController()
+        tabs = FittingTabViewController()
         tabs.tabStyle = .toolbar
         tabs.canPropagateSelectedChildViewControllerTitle = false   // держим общий заголовок окна
+        tabs.onSelectionChanged = { [weak self] in self?.fitWindowToSelectedTab() }
 
         addTab(L("settings.tab.general"),   symbol: "gearshape",             view: buildGeneralTab())
         addTab(L("settings.tab.dictation"), symbol: "mic",                   view: buildDictationTab())
@@ -576,6 +577,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         window?.center()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        fitWindowToSelectedTab()
         window?.makeFirstResponder(secureKeyField)
     }
 
@@ -585,6 +587,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         window?.center()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        fitWindowToSelectedTab()
     }
 
     /// Открыть настройки сразу на вкладке About (пункт меню-бара «О Voica» ведёт сюда).
@@ -595,6 +598,29 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         window?.center()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        fitWindowToSelectedTab()
+    }
+
+    /// Подогнать высоту окна под выбранную вкладку.
+    ///
+    /// Штатной подгонки не хватает в двух местах: на первом показе (вкладку выбрали до того, как
+    /// окно появилось на экране — так открывается «О программе») и при уходе на более низкую
+    /// вкладку (окно растёт, но обратно не ужимается). Через `preferredContentSize` это не
+    /// лечится: значение к моменту показа уже равно нужному, присвоение того же самого ничего не
+    /// меняет и окно остаётся как было. Поэтому двигаем рамку сами — на разницу между тем, что
+    /// вкладке нужно, и тем, сколько она занимает сейчас. Верхний край окна держим на месте:
+    /// иначе оно «прыгает» вниз при каждом переключении.
+    private func fitWindowToSelectedTab() {
+        let idx = tabs.selectedTabViewItemIndex
+        guard let window,
+              tabs.tabViewItems.indices.contains(idx),
+              let vc = tabs.tabViewItems[idx].viewController else { return }
+        let delta = vc.preferredContentSize.height - tabs.view.frame.height
+        guard abs(delta) > 0.5 else { return }
+        var frame = window.frame
+        frame.size.height += delta
+        frame.origin.y -= delta
+        window.setFrame(frame, display: true)
     }
 
     private func populate() {
@@ -1007,5 +1033,17 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         done.messageText = L("deleteAll.done.title")
         done.informativeText = L("deleteAll.done.msg")
         done.runModal()
+    }
+}
+
+/// Вкладки, сообщающие наружу о смене выбора, — чтобы окно можно было подогнать под вкладку.
+/// Штатный NSTabViewController увеличивает окно под более высокую вкладку, но обратно не
+/// ужимает: без этого окно остаётся высотой самой высокой из уже открытых.
+final class FittingTabViewController: NSTabViewController {
+    var onSelectionChanged: (() -> Void)?
+
+    override func tabView(_ tabView: NSTabView, didSelect item: NSTabViewItem?) {
+        super.tabView(tabView, didSelect: item)
+        onSelectionChanged?()
     }
 }

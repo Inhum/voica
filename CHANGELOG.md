@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.11] — 2026-08-08 — Settings window sizing
+
+### Fixed
+- **Settings opened too tall when it opened straight on About** (the menu-bar “About Voica”
+  item). The tab was selected before the window had ever been on screen, so the window kept the
+  height of a different tab.
+- **The Settings window never shrank back.** It grew for a taller tab and stayed that way, so
+  shorter tabs were shown with dead space at the bottom. Present since 0.8.0, when the tabs were
+  introduced; it only became visible in 0.9.10, once About grew a Support button and became the
+  tallest tab.
+
 ## [0.9.10] — 2026-08-08 — Recording bar, double-tap to start, batch delete
 
 ### Added
