@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="Лицензия MIT">
   <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
   <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://boosty.to/voica"><img src="https://img.shields.io/badge/Boosty-поддержать-F05A2C?logo=boosty&logoColor=white" alt="Поддержать на Boosty"></a>
 </p>
 
 ---
@@ -27,6 +28,12 @@
 [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`), быстро и дёшево, — или
 **полностью офлайн** локальной моделью (GigaAM v3 от Сбера, русский распознаёт отлично),
 без интернета и без ключа.
+
+## Поддержать проект
+
+Voica бесплатна и останется бесплатной — все функции, без подписки. Если она экономит вам
+время, поддержать работу можно на [Boosty](https://boosty.to/voica): путь к 1.0 и
+[версия для Windows](https://github.com/Inhum/voica-win).
 
 ## Возможности
 
@@ -148,12 +155,6 @@
 организациях Groq chat-модели по умолчанию заблокированы — если статус показывает
 «заблокирована», разрешите выбранную модель в console.groq.com → Settings → Limits. Иначе
 исправление молча откатывается к исходному тексту (fail-open по замыслу).
-
-## Поддержать проект
-
-Voica бесплатна и останется бесплатной — все функции, без подписки и платных тарифов. Если она
-экономит вам время и хочется поддержать, есть [Boosty](https://boosty.to/voica). Это чисто
-по желанию: ничто в приложении от этого не зависит.
 
 ## Благодарности
 

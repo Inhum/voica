@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
   <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
   <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://boosty.to/voica"><img src="https://img.shields.io/badge/Boosty-support-F05A2C?logo=boosty&logoColor=white" alt="Support on Boosty"></a>
 </p>
 
 ---
@@ -26,6 +27,12 @@ marks. Voica does: dictate by a hotkey and get clean, punctuated text inserted r
 you're typing, transcribed via [Groq](https://groq.com) Whisper (`whisper-large-v3-turbo`),
 which is fast and cheap — or **fully offline** with a local on-device model (Sber's GigaAM v3,
 excellent for Russian), no internet or API key required.
+
+## Support the project
+
+Voica is free and stays free — every feature, no subscription. If it saves you time, you can
+back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
+[Windows version](https://github.com/Inhum/voica-win).
 
 ## Features
 
@@ -169,12 +176,6 @@ can't stably identify an ad-hoc app). With the certificate it persists. See
 
 Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). This is a
 spare-time project, so responses may be slow and not every feature request will be accepted.
-
-## Support the project
-
-Voica is free and stays free — every feature, no subscription, no paid tier. If it saves you
-time and you'd like to chip in, there's [Boosty](https://boosty.to/voica). Entirely optional,
-and nothing in the app depends on it.
 
 ## Acknowledgements
 
