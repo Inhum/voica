@@ -169,9 +169,15 @@ enum SelfTest {
             print("  · mel parity: testdata/gigaam не найдена — пропуск")
         }
 
-        // Локальный движок e2e (только если модель и dev-эталон есть на машине)
-        let devRef = FileManager.default.homeDirectoryForCurrentUser
+        // Локальный движок e2e (только если модель и эталон есть на машине).
+        // Эталон живёт в репозитории — тест идёт на любой машине, а не только там, где
+        // когда-то поднимали python-окружение. Старый путь в кэше оставлен фолбэком.
+        let repoRef = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("testdata/gigaam-e2e")
+        let cacheRef = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".cache/gigaam/dev-ref")
+        let devRef = FileManager.default.fileExists(
+            atPath: repoRef.appendingPathComponent("seg600.wav").path) ? repoRef : cacheRef
         let refWav = devRef.appendingPathComponent("seg600.wav")
         if LocalSTT.isModelAvailable, FileManager.default.fileExists(atPath: refWav.path),
            let expected = try? String(contentsOf: devRef.appendingPathComponent("seg600-text.txt"),
