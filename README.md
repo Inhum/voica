@@ -46,7 +46,9 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
 - **Local offline engine (optional)** — switch Settings → General to *Local (offline)* and
   dictation runs entirely on your Mac via Core ML on the Apple Neural Engine (Sber's
   [GigaAM v3](https://github.com/salute-developers/GigaAM) model, MIT, punctuation out of
-  the box, excellent Russian). One-time ~400 MB model download with a progress bar; the model
+  the box, excellent Russian; the Core ML conversion is ours and is published as
+  [inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml)). One-time ~400 MB
+  model download with a progress bar; the model
   can be deleted anytime in Settings → Data. If the cloud is unreachable, Voica automatically
   falls back to the local model (with a notification). Trade-offs: English words may come out
   transliterated in Cyrillic, and the vocabulary hint stays cloud-only.
@@ -187,4 +189,5 @@ agentic coding tool, as an AI pair-programmer.
 [MIT](LICENSE) © 2026 Ivan Ushakov
 
 The bundled local recognition model (Sber's GigaAM v3) is redistributed under its own MIT
-license — see [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+license — see [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md). Its Core ML conversion, made
+for Voica, is published separately: [inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml).

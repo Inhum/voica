@@ -45,7 +45,9 @@ Voica бесплатна и останется бесплатной — все �
   выключите, и роль индикатора вернётся иконке в строке меню.
 - **Локальный офлайн-движок (по желанию)** — переключите Настройки → Основные на
   «Локально (офлайн)», и распознавание идёт целиком на вашем Маке через Core ML на
-  Neural Engine (модель [GigaAM v3](https://github.com/salute-developers/GigaAM) от Сбера,
+  Neural Engine (модель [GigaAM v3](https://github.com/salute-developers/GigaAM) от Сбера;
+  конверсия в Core ML — наша, опубликована как
+  [inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml),
   MIT; русский распознаёт отлично, пунктуация из коробки). Модель докачивается один раз
   (~400 МБ, с прогрессом) и удаляется в один клик в Настройки → Данные. Если облако
   недоступно — Voica сама переключится на локальную модель и предупредит уведомлением.
@@ -167,4 +169,6 @@ Voica во многом собрана с помощью [Claude Code](https://c
 [MIT](LICENSE) © 2026 Ivan Ushakov
 
 Встроенная локальная модель распознавания (GigaAM v3 от Сбера) распространяется под своей
-лицензией MIT — см. [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+лицензией MIT — см. [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md). Её конверсия в Core ML,
+сделанная для Voica, опубликована отдельно:
+[inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml).
