@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.12] — 2026-08-14 — Chat model chain refreshed
+
+Groq is retiring `llama-3.3-70b-versatile` on 16 August 2026. Voica heals itself when a model
+disappears — a 404 during AI term correction triggers a background re-resolve, and the dictation
+itself is never blocked — so nothing breaks without this update. It removes the dead model from
+the defaults so a fresh install doesn't start by talking to it.
+
+### Changed
+- **Model priority chain** for “Fix terms with AI” is now `openai/gpt-oss-120b` →
+  `qwen/qwen3.6-27b` → `openai/gpt-oss-20b` → `llama-3.1-8b-instant` — both models Groq named as
+  replacements are in it. The default seed (first launch, offline) moved to `openai/gpt-oss-120b`.
+- `llama-3.3-70b-versatile` joins the retired list: a saved manual pick, and a cached resolved
+  model, migrate to “recommended (automatic)” instead of costing one failed request per launch.
+- Dropped `gemma2-9b-it` from the chain — Groq stopped serving it some time ago, unannounced.
+
+Nothing to do on your side: if you had picked a specific model by hand, it will switch back to
+automatic and the status line in Settings will show what it resolved to.
+
 ## [0.9.11] — 2026-08-08 — Settings window sizing
 
 ### Fixed

@@ -259,7 +259,10 @@ enum SelfTest {
         check("chat filter drops tts", !GroqClient.isChatModelID("playai-tts"))
         check("chat filter drops guard", !GroqClient.isChatModelID("meta-llama/llama-guard-4-12b"))
         check("pick prefers chain",
-              GroqClient.pickRecommended(from: ["gemma2-9b-it", "llama-3.3-70b-versatile"]) == "llama-3.3-70b-versatile")
+              GroqClient.pickRecommended(from: ["llama-3.1-8b-instant", "openai/gpt-oss-120b"]) == "openai/gpt-oss-120b")
+        // Снятая с раздачи модель не должна выигрывать у живой, даже если провайдер её ещё отдаёт
+        check("pick ignores retired head",
+              GroqClient.pickRecommended(from: ["llama-3.3-70b-versatile", "openai/gpt-oss-20b"]) == "openai/gpt-oss-20b")
         check("pick falls back to first",
               GroqClient.pickRecommended(from: ["some-new-model"]) == "some-new-model")
         check("pick empty → nil", GroqClient.pickRecommended(from: []) == nil)
@@ -271,6 +274,8 @@ enum SelfTest {
               GroqClient.activeChatModel == GroqClient.defaultChatModel)
         Prefs.chatModel = "qwen/qwen3-32b"   // снятая с раздачи → миграция на auto
         check("retired chat model migrates to auto", Prefs.chatModel == "auto")
+        Prefs.chatModel = "llama-3.3-70b-versatile"   // снята Groq 16.08.2026
+        check("llama-3.3 migrates to auto", Prefs.chatModel == "auto")
         Prefs.chatModel = "llama-3.1-8b-instant"
         check("manual chatModel round-trip", Prefs.chatModel == "llama-3.1-8b-instant")
         check("activeChatModel honors manual", GroqClient.activeChatModel == "llama-3.1-8b-instant")
