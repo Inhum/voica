@@ -121,6 +121,11 @@ enum GroqClient {
     /// Сид-дефолт до того, как получен живой список (первый запуск / офлайн).
     static let defaultChatModel = "openai/gpt-oss-120b"
 
+    /// Вызывается, когда chat-модель отдала 403 (не разрешена в Groq-организации пользователя).
+    /// Ставит AppDelegate; аргумент — id модели. Срабатывает не чаще раза на модель за сессию.
+    static var onChatModelBlocked: ((String) -> Void)?
+    private static var blockedNotified: String?
+
     /// Модель, которой реально шлём постобработку СЕЙЧАС: ручной выбор пользователя или,
     /// в режиме "auto", последняя резолвнутая из живого списка (кэш в Prefs).
     static var activeChatModel: String {
@@ -131,9 +136,12 @@ enum GroqClient {
     /// Оставляем только chat-совместимые id. Denylist (а не allowlist): у Groq нет поля
     /// «это chat», зато новые chat-семейства появляются регулярно — исключаем заведомо
     /// не-chat (whisper/tts/orpheus/guard/embed/...), остальное считаем пригодным.
+    /// `compound` — не модель, а агентная система Groq с собственным роутингом и инструментами:
+    /// для одной короткой правки терминов это лишний слой, а роутит она в том числе на модели,
+    /// которых у организации может не быть (→ 403 вместо ответа).
     static func isChatModelID(_ id: String) -> Bool {
         let lower = id.lowercased()
-        let deny = ["whisper", "tts", "orpheus", "guard", "embed", "moderation", "distil"]
+        let deny = ["whisper", "tts", "orpheus", "guard", "embed", "moderation", "distil", "compound"]
         return !deny.contains { lower.contains($0) }
     }
 
@@ -238,6 +246,17 @@ enum GroqClient {
         URLSession.shared.dataTask(with: req) { data, resp, err in
             if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
                 healChatModelInBackground()   // модель убрали — чиним к следующей диктовке
+            }
+            // 403 — модель есть на платформе, но не разрешена организации пользователя.
+            // Само-исцеление тут не помогает (модель жива, доступа нет), а молча терять
+            // исправление терминов на каждой диктовке — худший вариант: человек не узнает,
+            // что функция не работает. Сообщаем один раз на модель за сессию.
+            if let http = resp as? HTTPURLResponse, http.statusCode == 403 {
+                let model = payload["model"] as? String ?? ""
+                if blockedNotified != model {
+                    blockedNotified = model
+                    DispatchQueue.main.async { onChatModelBlocked?(model) }
+                }
             }
             guard err == nil,
                   let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),

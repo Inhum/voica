@@ -258,6 +258,9 @@ enum SelfTest {
         check("chat filter drops whisper", !GroqClient.isChatModelID("whisper-large-v3-turbo"))
         check("chat filter drops tts", !GroqClient.isChatModelID("playai-tts"))
         check("chat filter drops guard", !GroqClient.isChatModelID("meta-llama/llama-guard-4-12b"))
+        // compound — агентная система с роутингом, а не chat-модель
+        check("chat filter drops compound", !GroqClient.isChatModelID("groq/compound"))
+        check("chat filter drops compound-mini", !GroqClient.isChatModelID("groq/compound-mini"))
         check("pick prefers chain",
               GroqClient.pickRecommended(from: ["llama-3.1-8b-instant", "openai/gpt-oss-120b"]) == "openai/gpt-oss-120b")
         // Снятая с раздачи модель не должна выигрывать у живой, даже если провайдер её ещё отдаёт

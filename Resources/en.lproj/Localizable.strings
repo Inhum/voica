@@ -200,6 +200,8 @@
 "hud.recognizing" = "Recognizing…";
 
 /* Offline fallback notification */
+"notify.chatBlocked.title" = "AI term correction didn't run";
+"notify.chatBlocked.body" = "The model %@ isn't enabled for your Groq organisation. The text was inserted without term correction. Enable it at console.groq.com → Settings → Limits.";
 "notify.fallback.title" = "Cloud is unreachable";
 "notify.fallback.body" = "This recording was transcribed with the local model (offline).";
 

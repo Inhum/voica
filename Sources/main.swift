@@ -38,6 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var latestUpdate: Update?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        GroqClient.onChatModelBlocked = { [weak self] model in self?.notifyChatModelBlocked(model) }
+
         _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
 
         NSApp.mainMenu = buildMainMenu()   // нужен Edit-меню, иначе не работают Cmd+V/C/X/A
@@ -360,6 +362,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Системное уведомление о переходе на локальную модель (без модальных окон,
     /// чтобы не мешать диктовке). Если уведомления запрещены — просто лог.
+    /// 403 от chat-модели: она есть у Groq, но не разрешена организации пользователя.
+    /// Постобработка при этом молча возвращает исходный текст — без уведомления человек
+    /// решил бы, что исправление терминов просто не работает.
+    private func notifyChatModelBlocked(_ model: String) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert]) { granted, _ in
+            guard granted else {
+                NSLog("Voica: chat-модель %@ заблокирована в Groq-организации", model)
+                return
+            }
+            let content = UNMutableNotificationContent()
+            content.title = L("notify.chatBlocked.title")
+            content.body = L("notify.chatBlocked.body", model)
+            center.add(UNNotificationRequest(identifier: "voica-chat-blocked",
+                                             content: content, trigger: nil))
+        }
+    }
+
     private func notifyLocalFallback() {
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert]) { granted, _ in

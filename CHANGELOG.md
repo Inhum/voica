@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.13] — 2026-08-14 — Blocked-model notification
+
+### Added
+- **A notification when the chat model is blocked.** If the model isn't enabled for your Groq
+  organisation, the API answers 403 — the model is alive, so self-healing can't help. Until now
+  term correction just stopped working silently on every dictation. Voica now tells you once per
+  session which model was refused and where to enable it (console.groq.com → Settings → Limits).
+
+### Changed
+- **`groq/compound` and `groq/compound-mini` no longer show up in the model picker.** They aren't
+  chat models but agentic systems with their own routing and tools — an extra layer for a single
+  short term fix, and they route to models your organisation may not have.
+
 ## [0.9.12] — 2026-08-14 — Chat model chain refreshed
 
 Groq is retiring `llama-3.3-70b-versatile` on 16 August 2026. Voica heals itself when a model
