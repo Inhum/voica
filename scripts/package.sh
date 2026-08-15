@@ -19,7 +19,12 @@ mkdir -p "$STAGE"
 cp -R "build/$NAME.app" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 
-hdiutil create -volname "$NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
+# Файловая система образа задана ЯВНО. Без -fs hdiutil выбирает сам, и выбор нестабилен:
+# 0.9.12 собрался в HFS+ (492 КБ), 0.9.13 на том же раннере и том же коде — в APFS (747 КБ).
+# Приложение при этом одинаковое, разница целиком в служебных структурах контейнера APFS.
+# Образ только читается (смонтировал → перетащил → выбросил), поэтому снимки, клоны и
+# шифрование APFS не нужны, а четверть мегабайта в загрузке — нужна.
+hdiutil create -volname "$NAME" -srcfolder "$STAGE" -ov -format UDZO -fs HFS+ "$DMG" >/dev/null
 rm -rf "$STAGE"
 
 echo "✓ Готово: $DMG"
