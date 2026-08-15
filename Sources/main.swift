@@ -494,6 +494,29 @@ if CommandLine.arguments.contains("--test-all") {
     exit(SelfTest.run() ? 0 : 1)
 }
 
+// Диагностика уведомлений: статус разрешения + пробный баннер.
+if CommandLine.arguments.contains("--notify-test") {
+    _ = NSApplication.shared
+    let center = UNUserNotificationCenter.current()
+    center.getNotificationSettings { s in
+        print("authorizationStatus =", s.authorizationStatus.rawValue,
+              "(0 notDetermined, 1 denied, 2 authorized, 3 provisional)")
+        print("alertSetting =", s.alertSetting.rawValue, "(0 notSupported, 1 disabled, 2 enabled)")
+        center.requestAuthorization(options: [.alert]) { granted, err in
+            print("requestAuthorization granted =", granted,
+                  "err =", err?.localizedDescription ?? "нет")
+            let c = UNMutableNotificationContent()
+            c.title = "Voica — проверка уведомлений"
+            c.body = "Если ты это видишь, доставка работает."
+            center.add(UNNotificationRequest(identifier: "voica-notify-test", content: c, trigger: nil)) { e in
+                print("add error =", e?.localizedDescription ?? "нет")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { exit(0) }
+            }
+        }
+    }
+    RunLoop.main.run()
+}
+
 // Служебный режим: скачать и установить локальную модель без GUI.
 // Проверяет весь конвейер загрузчика (сеть → SHA-256 → распаковка) на настоящем
 // release-ассете; $VOICA_GIGAAM_URL переопределяет источник.
