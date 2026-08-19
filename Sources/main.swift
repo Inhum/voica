@@ -340,8 +340,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Общий хвост обоих движков: пустой результат / ИИ-исправление / доставка.
-    private func handleTranscribed(_ t: Transcription, rec: (url: URL, duration: TimeInterval),
+    private func handleTranscribed(_ raw: Transcription, rec: (url: URL, duration: TimeInterval),
                                    model: String) {
+        // §6: детерминированная нормализация — правилами, до ИИ-правки и независимо от неё.
+        // Работает на обоих движках, без ключа и без сети. Для локального движка это вообще
+        // единственный бесплатный путь: словарь-подсказка `prompt` — фича облачного Whisper.
+        let t = Transcription(text: Normalizer.fixTerms(raw.text, vocabulary: Prefs.vocabulary),
+                              language: raw.language, duration: raw.duration)
         if t.text.isEmpty {
             state = .idle
             try? FileManager.default.removeItem(at: rec.url)

@@ -287,6 +287,45 @@ enum SelfTest {
         check("prefs vocabulary round-trip", Prefs.vocabulary == "test-term")
         Prefs.vocabulary = savedVocab
 
+        // Детерминированное исправление терминов (§6). Искажения ниже — НАСТОЯЩИЕ,
+        // из истории пользователя: GigaAM пишет латиницу вперемешку с кириллицей.
+        let vocab = "Claude Code, DeepSeek, Voica, focus-radio, Groq"
+        check("normalizer fixes Dпсик",
+              Normalizer.fixTerms("термином Dпсик в словаре", vocabulary: vocab)
+              == "термином DeepSeek в словаре")
+        check("normalizer fixes Dpсиcк",
+              Normalizer.fixTerms("это Dpсиcк.", vocabulary: vocab) == "это DeepSeek.")
+        check("normalizer fixes Deepsc",
+              Normalizer.fixTerms("Deepsc, проверка", vocabulary: vocab) == "DeepSeek, проверка")
+        check("normalizer keeps punctuation and spacing",
+              Normalizer.fixTerms("а, Dпсик!  дальше", vocabulary: vocab) == "а, DeepSeek!  дальше")
+        // Чистый русский и чистая латиница — не кандидаты: признак именно СМЕСЬ алфавитов.
+        check("normalizer ignores plain russian",
+              Normalizer.fixTerms("дипсик и оферта", vocabulary: vocab) == "дипсик и оферта")
+        check("normalizer ignores correct term",
+              Normalizer.fixTerms("DeepSeek готов", vocabulary: vocab) == "DeepSeek готов")
+        check("normalizer no vocabulary is noop",
+              Normalizer.fixTerms("Dпсик", vocabulary: "  ") == "Dпсик")
+        // Смешанное слово, не похожее ни на один термин, трогать нельзя.
+        // Чистая латиница — тоже кандидат, но с побуквенной проверкой: «Greek» и «Groq»
+        // имеют один костяк (grk), и без неё одно превратилось бы в другое.
+        check("normalizer keeps lookalike latin word",
+              Normalizer.fixTerms("это Greek текст", vocabulary: vocab) == "это Greek текст")
+        check("similarity separates Deepsc from Greek",
+              Normalizer.similarity("deepsc", "deepseek") >= 0.6
+              && Normalizer.similarity("greek", "groq") < 0.6)
+        check("normalizer leaves unknown mixed word",
+              Normalizer.fixTerms("вот Xюйня тут", vocabulary: vocab) == "вот Xюйня тут")
+        check("mixed script detected", Normalizer.hasMixedScript("Dпсик"))
+        check("mixed script detected in tail", Normalizer.hasMixedScript("раadio"))
+        check("mixed script not in plain words",
+              !Normalizer.hasMixedScript("привет") && !Normalizer.hasMixedScript("DeepSeek"))
+        check("skeleton matches across scripts",
+              Normalizer.skeleton("Dпсик") == Normalizer.skeleton("DeepSeek")
+              && Normalizer.skeleton("Deepsc") == Normalizer.skeleton("DeepSeek"))
+        check("skeleton separates different terms",
+              Normalizer.skeleton("Groq") != Normalizer.skeleton("DeepSeek"))
+
         // LLM-постобработка — сборка промпта и настройка
         check("postprocess empty vocab → nil",
               GroqClient.postProcessPrompt(text: "привет", vocabulary: "  \n") == nil)
