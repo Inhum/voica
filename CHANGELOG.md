@@ -4,6 +4,52 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.15] — 2026-08-19 — Terms are fixed by rules, before any AI
+
+Until now the vocabulary did nothing at all on the local engine: the recognition hint is a cloud
+Whisper feature, and only the cloud language model could fix a mangled term. Offline mode was
+only half offline.
+
+### Added
+- **Terms are now fixed by rules, on your own machine.** No download, no memory, no network, no
+  API key — and it works on both engines. It runs before the AI pass and switches itself on
+  whenever the vocabulary isn't empty; there is no separate checkbox, because you filled in the
+  vocabulary precisely so those words come out right.
+  A garbled term is recognised by its consonant skeleton — vowels are what recognition loses and
+  confuses, consonants survive. Every real-world mangling of `DeepSeek` seen in testing —
+  `Dпсик`, `Dпсиcк`, `Deepsc`, `диппсих` — maps to the same skeleton as the term itself. Words
+  mixing Latin and Cyrillic letters (`Dпсик`, `раadio`) are a reliable sign of a mangled foreign
+  name: ordinary Russian text never looks like that.
+  Compound terms are matched across up to two words, because recognition both glues them together
+  (`клодкод`) and splits them apart (`Tail scale`).
+  Rules deliberately stay quiet when unsure. A missed term is picked up by the AI pass if you have
+  it on; a word replaced by mistake would go unnoticed, which is worse. Checked against the whole
+  history: 60 dictations, 20 replacements, every one of them correct.
+- **Full offline mode.** Local engine plus the AI toggle off — neither audio nor text leaves your
+  Mac, and terms are still corrected.
+- **Search in History** (Cmd+F, or the field above the list). It searches the finished text *and*
+  what recognition heard before any fixing — you remember what you said, not what it was turned
+  into. Matches are highlighted, the text scrolls to the first one, and the number of matches in
+  the selected entry is shown. If the match was in the original wording, that original appears
+  below the text with the match highlighted.
+
+### Fixed
+- **Long dictations no longer contain doubled fragments.** Recordings are recognised in 25-second
+  windows and stitched back together; the seam was matched word-for-word, but neighbouring windows
+  hear the overlap differently ("руководителя" / "руководитель"), so no overlap was found and both
+  copies ended up in the text. Words are now compared leniently, and a word cut in half by the
+  window edge no longer breaks the comparison. Verified on a real six-minute recording: three
+  doubled fragments gone, nothing else touched.
+- **`allam-2-7b` is no longer offered as a chat model** — see 0.9.14; it stays out because the
+  live list is sorted alphabetically and it silently became the fallback for Russian terms.
+
+### Changed
+- **The vocabulary and AI hints in Settings were rewritten.** They said the vocabulary only worked
+  with the cloud engine and that the AI pass was the way to fix terms. Both stopped being true.
+- **History keeps the text as recognition produced it**, whenever fixing changed something. It is
+  what makes it possible to tell an engine mistake from a model mistake — and it is what search
+  looks through. Same retention and same "delete all data" as everything else.
+
 ## [0.9.14] — 2026-08-19 — Reasoning models no longer leak their thinking
 
 ### Fixed
