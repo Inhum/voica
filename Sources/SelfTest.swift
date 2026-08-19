@@ -290,6 +290,39 @@ enum SelfTest {
         // Детерминированное исправление терминов (§6). Искажения ниже — НАСТОЯЩИЕ,
         // из истории пользователя: GigaAM пишет латиницу вперемешку с кириллицей.
         let vocab = "Claude Code, DeepSeek, Voica, focus-radio, Groq"
+
+        // Корпус с живых диктовок (локальный движок, ИИ выключен) на РЕАЛЬНОМ словаре
+        // пользователя. Отрицательные случаи важнее положительных: пропуск подберёт LLM,
+        // а подменённое слово никто не заметит. Пороги вымерены именно на этих ловушках.
+        let realVocab = "Claude Code, Cowork, ChatGPT, Voica, focus-radio, Groq, API, " +
+                        "ЕИС, оферта, GigaAM, Tailscale, app-connector, exit-node, DeepSeek"
+        func corpus(_ name: String, _ input: String, _ expected: String) {
+            check("corpus: \(name)", Normalizer.fixTerms(input, vocabulary: realVocab) == expected)
+        }
+        // Чинится
+        corpus("клодкод → Claude Code", "Проверка клодкод, проверка.", "Проверка Claude Code, проверка.")
+        corpus("Tail scale → Tailscale", "Настрой Tail scale там.", "Настрой Tailscale там.")
+        corpus("Up connector → app-connector", "Это Up connector.", "Это app-connector.")
+        corpus("Fоcс радио → focus-radio", "Включи Fоcс радио.", "Включи focus-radio.")
+        // ЛОВУШКИ — обычная русская речь, трогать нельзя ни в коем случае
+        corpus("Вика ≠ Voica", "Вика прислала кода на 200 строк.", "Вика прислала кода на 200 строк.")
+        corpus("Папа ≠ API, усы ≠ ЕИС", "Папа купил усы для костюма.", "Папа купил усы для костюма.")
+        corpus("депеша ≠ DeepSeek", "Пришла депеша срочная.", "Пришла депеша срочная.")
+        corpus("греческий ≠ Groq", "Я учил греческий, а не турецкий.", "Я учил греческий, а не турецкий.")
+        corpus("Колодка ≠ Claude Code", "Колодка тормозная. Код заказа 105.", "Колодка тормозная. Код заказа 105.")
+        // Грамматика: скелет «аферту» точно совпадает с «оферта», но подстановка дала бы
+        // «Отправь оферта» — русские термины склоняются, это работа ИИ, а не правил.
+        corpus("аферту не склоняем", "Отправь аферту.", "Отправь аферту.")
+        // Известные промахи — движок услышал другое слово, скелет не спасёт. Фиксируем как есть,
+        // чтобы заметить, если однажды начнут «чиниться» неправильно.
+        corpus("плоткот не угадать", "Открой плоткот и запусти.", "Открой плоткот и запусти.")
+        corpus("Войс не угадать", "Войс пишет с пунктуацией.", "Войс пишет с пунктуацией.")
+        // Правильные термины проходят насквозь без изменений
+        corpus("уже правильные", "Поставил DeepSeek, работаю в Cowork.", "Поставил DeepSeek, работаю в Cowork.")
+        // Поймано полным прогоном по истории, придуманные ловушки это пропустили:
+        // скелет «vice» совпадает с Voica (vk), близость ровно 0.60 — впритык проходила порог.
+        corpus("vice versa ≠ Voica", "затем чат увидит результат и vice versa",
+               "затем чат увидит результат и vice versa")
         check("normalizer fixes Dпсик",
               Normalizer.fixTerms("термином Dпсик в словаре", vocabulary: vocab)
               == "термином DeepSeek в словаре")
@@ -300,8 +333,13 @@ enum SelfTest {
         check("normalizer keeps punctuation and spacing",
               Normalizer.fixTerms("а, Dпсик!  дальше", vocabulary: vocab) == "а, DeepSeek!  дальше")
         // Чистый русский и чистая латиница — не кандидаты: признак именно СМЕСЬ алфавитов.
+        // «дипсик» — искорёженный DeepSeek кириллицей: скелет dpsk совпадает точно, четыре
+        // буквы, термин латинский — чиним. Раньше правило видело только смешанный алфавит.
+        check("normalizer fixes cyrillic term",
+              Normalizer.fixTerms("дипсик и оферта", vocabulary: vocab) == "DeepSeek и оферта")
         check("normalizer ignores plain russian",
-              Normalizer.fixTerms("дипсик и оферта", vocabulary: vocab) == "дипсик и оферта")
+              Normalizer.fixTerms("сегодня оферта и работа", vocabulary: vocab)
+              == "сегодня оферта и работа")
         check("normalizer ignores correct term",
               Normalizer.fixTerms("DeepSeek готов", vocabulary: vocab) == "DeepSeek готов")
         check("normalizer no vocabulary is noop",
@@ -309,6 +347,10 @@ enum SelfTest {
         // Смешанное слово, не похожее ни на один термин, трогать нельзя.
         // Чистая латиница — тоже кандидат, но с побуквенной проверкой: «Greek» и «Groq»
         // имеют один костяк (grk), и без неё одно превратилось бы в другое.
+        // Живой промах: модель услышала «псих» вместо «сик», костяк разошёлся на одну согласную.
+        check("normalizer fixes Dппсих",
+              Normalizer.fixTerms("Поставил Dппсих, проверка", vocabulary: vocab)
+              == "Поставил DeepSeek, проверка")
         check("normalizer keeps lookalike latin word",
               Normalizer.fixTerms("это Greek текст", vocabulary: vocab) == "это Greek текст")
         check("similarity separates Deepsc from Greek",

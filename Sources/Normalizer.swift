@@ -56,23 +56,71 @@ enum Normalizer {
     /// Заменяет искорёженные словарные термины на канонические написания.
     /// Кандидаты — только слова со смешанным алфавитом; совпадение — по согласному костяку.
     /// Пунктуация и пробелы сохраняются как есть.
+    /// Термин записан латиницей — значит в русском тексте не склоняется, и подставить его
+    /// словарной формой безопасно. Русские термины правила НЕ трогают: сказано «отправь
+    /// аферту», скелет совпадает с «оферта» точно, но подстановка дала бы «отправь оферта».
+    /// Склонение требует понимания смысла — это работа §6.1.
+    private static func isLatinTerm(_ t: String) -> Bool {
+        !t.lowercased().contains { translit[$0] != nil }
+    }
+
+    /// Разделитель внутри составного термина: слова идут подряд, а не через конец предложения.
+    private static func joinable(_ sep: String) -> Bool {
+        !sep.isEmpty && sep.allSatisfy { $0 == " " || $0 == "-" || $0 == "\u{2011}" }
+    }
+
     static func fixTerms(_ text: String, vocabulary: String) -> String {
         let terms = vocabulary.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         guard !terms.isEmpty else { return text }
 
-        var out = "", word = ""
-        func flush() {
-            guard !word.isEmpty else { return }
-            out += replacement(for: word, terms: terms) ?? word
-            word = ""
-        }
+        // Речь режется на слова, а термин может быть составным («Tail scale» вместо
+        // Tailscale), поэтому сопоставляем окнами — от самых длинных к коротким.
+        var pieces: [(sep: String, word: String)] = []
+        var sep = "", word = ""
         for ch in text {
-            if ch.isLetter || ch.isNumber { word.append(ch) } else { flush(); out.append(ch) }
+            if ch.isLetter || ch.isNumber { word.append(ch) }
+            else {
+                if !word.isEmpty { pieces.append((sep, word)); sep = ""; word = "" }
+                sep.append(ch)
+            }
         }
-        flush()
-        return out
+        if !word.isEmpty { pieces.append((sep, word)); sep = "" }
+        let trailing = sep
+
+        // Ширина окна не выводится из числа слов в термине: движок перекашивает в обе
+        // стороны — «Claude Code» приезжает одним словом «клодкод», а «Tailscale» двумя
+        // («Tail scale»). Двух слов хватает на все живые случаи, шире — лишний риск.
+        let maxWindow = 2
+        var out = ""
+        var i = 0
+        while i < pieces.count {
+            var matched = false
+            var n = min(maxWindow, pieces.count - i)
+            while n >= 1 {
+                // Окно шире одного слова склеиваем, только если слова идут подряд.
+                let gapsOK = n == 1 || (1..<n).allSatisfy { joinable(pieces[i + $0].sep) }
+                // В склейке каждое слово должно давать хоть одну согласную. Иначе окно
+                // проглатывает пустышку: «дипсик и» даёт тот же костяк dpsk, что и «дипсик»,
+                // потому что «и» — чистая гласная, и союз исчезал из текста.
+                let allSubstantial = n == 1 || (0..<n).allSatisfy { !skeleton(pieces[i + $0].word).isEmpty }
+                if gapsOK && allSubstantial {
+                    let joined = (0..<n).map { pieces[i + $0].word }.joined()
+                    // Окно шире одного слова — уже допущение. Второе допущение поверх него
+                    // (нестрогий костяк) съедает соседей: «в Cowork» склеивалось в вCowork,
+                    // расходилось с Cowork на одну букву и глотало предлог. Для склеек —
+                    // только точное совпадение.
+                    if let term = replacement(for: joined, terms: terms, exactOnly: n > 1) {
+                        out += pieces[i].sep + term
+                        i += n; matched = true; break
+                    }
+                }
+                n -= 1
+            }
+            if !matched { out += pieces[i].sep + pieces[i].word; i += 1 }
+        }
+        return out + trailing
     }
 
     /// Слово в латинице, приведённое к одному виду: для сравнения искажения с термином.
@@ -103,22 +151,42 @@ enum Normalizer {
         return 1 - Double(prev[y.count]) / Double(max(x.count, y.count))
     }
 
-    /// Канонический термин для искажённого слова, либо nil — трогать не надо.
+    /// Канонический термин для искажённого слова (или склейки слов), либо nil — не трогать.
     ///
-    /// Кандидаты двух сортов, и требования к ним РАЗНЫЕ:
-    /// • **смешанный алфавит** (`Dпсик`) — сам по себе доказательство порчи, хватает совпадения
-    ///   костяка. Побуквенно такое слово от термина далеко, сравнивать его бессмысленно.
-    /// • **чистая латиница** (`Deepsc`) — сама по себе ничего не доказывает: в русской диктовке
-    ///   попадаются и нормальные английские слова. Поэтому вдобавок к костяку требуем побуквенную
-    ///   близость. Без этого «Greek» превратился бы в «Groq» — костяк у них один (`grk`).
-    private static func replacement(for word: String, terms: [String]) -> String? {
+    /// Кандидаты трёх сортов, и требования к ним РАЗНЫЕ — мягкость позволительна ровно
+    /// настолько, насколько доказана порча:
+    /// • **смешанный алфавит** (`Dпсик`) — доказательство само по себе, в русском тексте так
+    ///   не пишут. Хватает костяка, допускается расхождение на одну согласную.
+    /// • **чистая латиница** (`Deepsc`) — ничего не доказывает, в русской диктовке полно
+    ///   английских слов. Костяк должен совпасть точно, плюс побуквенная близость ≥ 0.6,
+    ///   иначе «Greek» стало бы «Groq».
+    /// • **чистая кириллица** (`клодкод`) — не доказывает ничего вовсе. Только точный костяк
+    ///   **от четырёх букв**. Мера вымерена на живых ловушках: «Вика» даёт костяк Voica
+    ///   один в один, «Папа» — API, «усы» — ЕИС, а при малейшем послаблении «депеша»
+    ///   становится DeepSeek (0.75), «Колодка» — Claude Code (0.80).
+    private static func replacement(for word: String, terms: [String],
+                                    exactOnly: Bool = false) -> String? {
         let mixed = hasMixedScript(word)
-        let onlyLatin = !mixed && word.allSatisfy { !$0.isLetter || $0.isASCII }
-        guard mixed || onlyLatin else { return nil }
+        let hasCyrillic = word.lowercased().contains { translit[$0] != nil }
+        let onlyLatin = !hasCyrillic
+        let onlyCyrillic = hasCyrillic && !mixed
 
+        // Минимальная длина костяка — по силе доказательства порчи. Смешанный алфавит
+        // доказывает сам себя, латинице и кириллице верить нечему. Мера не из головы:
+        // на полном прогоне истории «vice versa» стало «Voica versa» — костяк vk совпал
+        // с Voica, а побуквенная близость вышла ровно 0.60, впритык. Подкручивать порог до
+        // 0.62 значило бы подгонять под один случай; короткий костяк не значит ничего в принципе.
+        let minSkeleton = mixed ? 2 : (onlyCyrillic ? 4 : 3)
         let sk = skeleton(word)
-        guard sk.count >= 2 else { return nil }     // однобуквенный костяк ничего не доказывает
-        var hits = terms.filter { skeleton($0) == sk }
+        guard sk.count >= minSkeleton else { return nil }
+
+        var hits = terms.filter { t in
+            guard isLatinTerm(t) else { return false }
+            let ts = skeleton(t)
+            if ts == sk { return true }
+            guard !exactOnly, mixed, sk.count >= 3, ts.count >= 3 else { return false }
+            return similarity(sk, ts) >= 0.75
+        }
         if onlyLatin {
             let w = latinized(word)
             hits = hits.filter { similarity(w, latinized($0)) >= 0.6 }

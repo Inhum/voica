@@ -358,11 +358,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             GroqClient.postProcess(text: t.text) { [weak self] final in
                 DispatchQueue.main.async {
                     self?.deliver(text: final, transcription: t, rec: rec, model: model,
-                                  raw: t.text)
+                                  raw: raw.text)
                 }
             }
         } else {
-            deliver(text: t.text, transcription: t, rec: rec, model: model)
+            // Сырой текст сохраняем и без ИИ: правила тоже меняют текст, и без исходника
+            // потом не разобрать, кто именно наследил. Нормализация детерминирована, поэтому
+            // промежуточное состояние всегда можно воспроизвести из сырого заново.
+            deliver(text: t.text, transcription: t, rec: rec, model: model, raw: raw.text)
         }
     }
 
@@ -402,7 +405,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Финальная доставка результата: история + буфер/вставка или окно.
-    /// `raw` — текст движка до ИИ-исправления терминов; nil, если правка не запускалась.
+    /// `raw` — текст движка ДО любой нашей обработки (и правил §6.2, и ИИ §6.1).
     /// В историю он попадает, только когда реально отличается от доставленного (§7):
     /// две одинаковые копии не нужны, а каждая пара «raw → text» — готовый случай для разбора.
     private func deliver(text: String, transcription t: Transcription,
@@ -555,6 +558,28 @@ if let i = CommandLine.arguments.firstIndex(of: "--transcribe"),
         print("Ошибка: \(error.localizedDescription)")
         exit(1)
     }
+}
+
+// Прогон нормализатора по файлу со строками: печатает только то, что изменилось.
+// Нужен, чтобы проверять правила на настоящей истории, а не на придуманных примерах —
+// ложное срабатывание на обычной речи иначе не поймать.
+if let i = CommandLine.arguments.firstIndex(of: "--normalize-corpus"),
+   i + 1 < CommandLine.arguments.count {
+    let path = CommandLine.arguments[i + 1]
+    guard let body = try? String(contentsOfFile: path, encoding: .utf8) else {
+        FileHandle.standardError.write("не прочитать \(path)\n".data(using: .utf8)!); exit(1)
+    }
+    let lines = body.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+    var changed = 0
+    for line in lines {
+        let after = Normalizer.fixTerms(line, vocabulary: Prefs.vocabulary)
+        if after != line {
+            changed += 1
+            print("— \(line)\n+ \(after)\n")
+        }
+    }
+    print("строк: \(lines.count), изменено: \(changed)")
+    exit(0)
 }
 
 if CommandLine.arguments.contains("--fetch-model") {
