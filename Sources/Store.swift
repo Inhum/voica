@@ -17,6 +17,11 @@ struct TranscriptRecord {
     let id: Int64
     let createdAt: Date
     let text: String
+    /// Текст до ИИ-исправления терминов (§6.1). Заполнен ТОЛЬКО когда правка что-то изменила,
+    /// иначе nil — хранить две одинаковые копии незачем. Каждая непустая пара «raw → text» это
+    /// готовый случай для разбора: без неё нельзя понять, кто наследил в тексте — движок или
+    /// модель (за один день это заблокировало четыре разбора подряд).
+    let rawText: String?
     let language: String?
     let durationSec: Double?
     let audioFilename: String?
@@ -55,9 +60,13 @@ final class Store {
               language TEXT,
               duration_sec REAL,
               audio_filename TEXT,
-              model TEXT
+              model TEXT,
+              raw_text TEXT
             );
             """)
+        // База могла быть создана до появления колонки: ALTER отвалится, если она уже есть —
+        // это ожидаемо, поэтому результат намеренно игнорируем.
+        _ = exec("ALTER TABLE transcriptions ADD COLUMN raw_text TEXT;")
         // init однопоточен (singleton ещё никому не виден) — можно звать приватный метод напрямую.
         _cleanupExpiredAudio()
     }
@@ -68,13 +77,13 @@ final class Store {
     /// из temp в хранилище. Возвращает id новой записи.
     @discardableResult
     func insert(text: String, language: String?, duration: Double?,
-                model: String?, audioTempURL: URL?) -> Int64? {
+                model: String?, audioTempURL: URL?, rawText: String? = nil) -> Int64? {
         queue.sync { _insert(text: text, language: language, duration: duration,
-                             model: model, audioTempURL: audioTempURL) }
+                             model: model, audioTempURL: audioTempURL, rawText: rawText) }
     }
 
     private func _insert(text: String, language: String?, duration: Double?,
-                         model: String?, audioTempURL: URL?) -> Int64? {
+                         model: String?, audioTempURL: URL?, rawText: String?) -> Int64? {
         var audioFilename: String?
         if Prefs.storeAudio, let src = audioTempURL {
             let name = "\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString).m4a"
@@ -88,8 +97,8 @@ final class Store {
         }
 
         let sql = """
-            INSERT INTO transcriptions (created_at, text, language, duration_sec, audio_filename, model)
-            VALUES (?, ?, ?, ?, ?, ?);
+            INSERT INTO transcriptions (created_at, text, language, duration_sec, audio_filename, model, raw_text)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
             """
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
@@ -100,6 +109,7 @@ final class Store {
         if let d = duration { sqlite3_bind_double(stmt, 4, d) } else { sqlite3_bind_null(stmt, 4) }
         bindOptText(stmt, 5, audioFilename)
         bindOptText(stmt, 6, model)
+        bindOptText(stmt, 7, rawText)
         guard sqlite3_step(stmt) == SQLITE_DONE else { return nil }
         return sqlite3_last_insert_rowid(db)
     }
@@ -112,7 +122,7 @@ final class Store {
 
     private func _all() -> [TranscriptRecord] {
         let sql = """
-            SELECT id, created_at, text, language, duration_sec, audio_filename, model
+            SELECT id, created_at, text, language, duration_sec, audio_filename, model, raw_text
             FROM transcriptions ORDER BY created_at DESC;
             """
         var stmt: OpaquePointer?
@@ -125,6 +135,7 @@ final class Store {
                 id: sqlite3_column_int64(stmt, 0),
                 createdAt: Date(timeIntervalSince1970: TimeInterval(sqlite3_column_int64(stmt, 1))),
                 text: colText(stmt, 2) ?? "",
+                rawText: colText(stmt, 7),
                 language: colText(stmt, 3),
                 durationSec: sqlite3_column_type(stmt, 4) == SQLITE_NULL ? nil : sqlite3_column_double(stmt, 4),
                 audioFilename: colText(stmt, 5),

@@ -352,7 +352,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Работает и после локального движка (нужен ключ Groq).
             GroqClient.postProcess(text: t.text) { [weak self] final in
                 DispatchQueue.main.async {
-                    self?.deliver(text: final, transcription: t, rec: rec, model: model)
+                    self?.deliver(text: final, transcription: t, rec: rec, model: model,
+                                  raw: t.text)
                 }
             }
         } else {
@@ -396,12 +397,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Финальная доставка результата: история + буфер/вставка или окно.
+    /// `raw` — текст движка до ИИ-исправления терминов; nil, если правка не запускалась.
+    /// В историю он попадает, только когда реально отличается от доставленного (§7):
+    /// две одинаковые копии не нужны, а каждая пара «raw → text» — готовый случай для разбора.
     private func deliver(text: String, transcription t: Transcription,
-                         rec: (url: URL, duration: TimeInterval), model: String) {
+                         rec: (url: URL, duration: TimeInterval), model: String,
+                         raw: String? = nil) {
         state = .idle
         Store.shared.insert(text: text, language: t.language,
                             duration: t.duration ?? rec.duration,
-                            model: model, audioTempURL: rec.url)
+                            model: model, audioTempURL: rec.url,
+                            rawText: (raw != text) ? raw : nil)
         try? FileManager.default.removeItem(at: rec.url)  // подчистить, если аудио не сохранялось
         if Prefs.outputMode == "window" {
             resultWindow.show(Transcription(text: text, language: t.language, duration: t.duration))

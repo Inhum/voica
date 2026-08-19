@@ -71,6 +71,7 @@ enum HistoryExporter {
             var o: [String: Any] = ["id": r.id,
                                     "created_at": iso.string(from: r.createdAt),
                                     "text": r.text]
+            o["raw_text"] = r.rawText             // есть, только если ИИ-правка что-то изменила
             o["language"] = r.language            // nil → ключ опускается
             o["duration_sec"] = r.durationSec
             o["model"] = r.model

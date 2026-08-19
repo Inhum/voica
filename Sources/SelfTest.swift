@@ -35,10 +35,12 @@ enum SelfTest {
         // HistoryExporter — сериализация в MD / CSV / JSON (чистая, без файлов)
         let exRecs = [
             TranscriptRecord(id: 1, createdAt: Date(timeIntervalSince1970: 1_700_000_000),
-                             text: "Привет, мир", language: "ru", durationSec: 2.5,
+                             text: "Привет, мир", rawText: "привет мир",
+                             language: "ru", durationSec: 2.5,
                              audioFilename: "a.m4a", model: "gigaam-v3-e2e-ctc"),
             TranscriptRecord(id: 2, createdAt: Date(timeIntervalSince1970: 1_700_000_100),
-                             text: "line with \"quote\", comma\nand newline", language: nil,
+                             text: "line with \"quote\", comma\nand newline", rawText: nil,
+                             language: nil,
                              durationSec: nil, audioFilename: nil, model: "whisper-large-v3-turbo"),
         ]
         let exMd = HistoryExporter.serialize(exRecs, as: .markdown)
@@ -55,6 +57,8 @@ enum SelfTest {
             check("export json count", arr.count == 2)
             check("export json text", (arr.first?["text"] as? String) == "Привет, мир")
             check("export json omits nil language", arr.last?["language"] == nil)
+            check("export json has raw_text", (arr.first?["raw_text"] as? String) == "привет мир")
+            check("export json omits nil raw_text", arr.last?["raw_text"] == nil)
         } else {
             check("export json parses", false)
         }
@@ -93,6 +97,27 @@ enum SelfTest {
         check("store batch delete cleanup", Store.shared.all().count == stressBefore)
         Store.shared.delete(ids: [])   // пустой список — не падаем и ничего не трогаем
         check("store batch delete empty is noop", Store.shared.all().count == stressBefore)
+
+        // Сырой текст до ИИ-правки (§7): пара «raw → text» нужна, чтобы разбирать, кто наследил
+        // в тексте — движок или модель. Дубль не храним: правка ничего не изменила → nil.
+        if let rid = Store.shared.insert(text: "Привет, DeepSeek", language: nil, duration: nil,
+                                         model: "test", audioTempURL: nil,
+                                         rawText: "привет дипсик") {
+            let rec = Store.shared.all().first { $0.id == rid }
+            check("store raw text round-trip", rec?.rawText == "привет дипсик")
+            check("store raw text keeps final", rec?.text == "Привет, DeepSeek")
+            Store.shared.delete(id: rid)
+        } else {
+            check("store raw text round-trip", false)
+        }
+        if let nid = Store.shared.insert(text: "без правки", language: nil, duration: nil,
+                                         model: "test", audioTempURL: nil) {
+            check("store raw text nil when absent",
+                  Store.shared.all().first { $0.id == nid }?.rawText == nil)
+            Store.shared.delete(id: nid)
+        } else {
+            check("store raw text nil when absent", false)
+        }
 
         // Prefs — round-trip с восстановлением
         let savedDays = Prefs.retentionDays
