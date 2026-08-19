@@ -38,6 +38,7 @@
 "history.empty" = "История пуста";
 "history.search" = "Поиск по тексту";
 "history.search.matches" = "совпадений: %d";
+"history.search.rawBlock" = "Исходно, до исправления:";
 "history.search.inRaw" = "найдено в исходном тексте";
 "history.search.none" = "Ничего не найдено";
 "history.play" = "Воспроизвести";

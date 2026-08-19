@@ -320,26 +320,58 @@ final class HistoryWindowController: NSWindowController {
     /// Показывает текст записи, подсвечивая совпадения с поиском. Для пятиминутной диктовки
     /// найти запись мало — надо ещё увидеть, ГДЕ внутри неё нужное место. Новых элементов
     /// интерфейса это не добавляет: подсветка и прокрутка к первому совпадению, больше ничего.
+    /// Подсвечивает вхождения `q` в уже собранной строке, начиная с `offset`. Возвращает
+    /// число найденного и диапазон первого — чтобы прокрутить к нему.
     @discardableResult
-    private func setDetailText(_ text: String) -> Int {
-        let q = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { detailText.string = text; return 0 }
-
-        let attr = NSMutableAttributedString(string: text, attributes: [
-            .font: NSFont.systemFont(ofSize: 14),
-            .foregroundColor: NSColor.labelColor,
-        ])
-        var first: NSRange?
+    private func highlight(_ q: String, in source: String, of attr: NSMutableAttributedString,
+                           offset: Int, first: inout NSRange?) -> Int {
         var count = 0
-        var from = text.startIndex
-        while let r = text.range(of: q, options: .caseInsensitive, range: from..<text.endIndex) {
-            let ns = NSRange(r, in: text)
+        var from = source.startIndex
+        while let r = source.range(of: q, options: .caseInsensitive, range: from..<source.endIndex) {
+            var ns = NSRange(r, in: source)
+            ns.location += offset
             attr.addAttributes([.backgroundColor: NSColor.systemYellow.withAlphaComponent(0.45)],
                                range: ns)
             if first == nil { first = ns }
             count += 1
             from = r.upperBound
         }
+        return count
+    }
+
+    @discardableResult
+    private func setDetailText(for r: TranscriptRecord) -> Int {
+        let text = r.text
+        let q = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { detailText.string = text; return 0 }
+
+        let body: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 14),
+            .foregroundColor: NSColor.labelColor,
+        ]
+        let attr = NSMutableAttributedString(string: text, attributes: body)
+        var first: NSRange?
+        let count = highlight(q, in: text, of: attr, offset: 0, first: &first)
+
+        // Запись нашлась по сырому тексту, а в показанном подсвечивать нечего. Показываем сам
+        // исходник — иначе пометка «найдено в исходном тексте» остаётся отпиской, человек не
+        // видит, ЧТО именно совпало. Подсветить вместо этого соответствующий кусок итогового
+        // текста нельзя: после ИИ-правки соответствия между фрагментами не существует, модель
+        // переписывает фразу целиком.
+        if count == 0, let raw = r.rawText, raw.localizedCaseInsensitiveContains(q) {
+            let caption = "\n\n" + L("history.search.rawBlock") + "\n"
+            attr.append(NSAttributedString(string: caption, attributes: [
+                .font: NSFont.systemFont(ofSize: 11),
+                .foregroundColor: NSColor.tertiaryLabelColor,
+            ]))
+            let offset = attr.length
+            attr.append(NSAttributedString(string: raw, attributes: [
+                .font: NSFont.systemFont(ofSize: 13),
+                .foregroundColor: NSColor.secondaryLabelColor,
+            ]))
+            highlight(q, in: raw, of: attr, offset: offset, first: &first)
+        }
+
         detailText.textStorage?.setAttributedString(attr)
         if let f = first { detailText.scrollRangeToVisible(f) }
         return count
@@ -356,7 +388,7 @@ final class HistoryWindowController: NSWindowController {
             return
         }
         emptyLabel.isHidden = true
-        let matches = setDetailText(r.text)
+        let matches = setDetailText(for: r)
 
         var parts = [Self.dateFormatter.string(from: r.createdAt)]
         if let l = r.language { parts.append(l) }

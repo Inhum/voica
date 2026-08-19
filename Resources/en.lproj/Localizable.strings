@@ -38,6 +38,7 @@
 "history.empty" = "History is empty";
 "history.search" = "Search text";
 "history.search.matches" = "matches: %d";
+"history.search.rawBlock" = "Original, before fixing:";
 "history.search.inRaw" = "found in the original text";
 "history.search.none" = "Nothing found";
 "history.play" = "Play";
