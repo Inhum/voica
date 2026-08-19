@@ -5,7 +5,13 @@ import Cocoa
 import AVFoundation
 
 final class HistoryWindowController: NSWindowController {
+    /// Весь список из базы. `records` — то, что показано после фильтра поиска.
+    private var allRecords: [TranscriptRecord] = []
     private var records: [TranscriptRecord] = []
+    private var searchField: NSSearchField!
+    /// Сводка поиска — на уровне поля поиска, над текстом записи. В нижней строке ей тесно:
+    /// там метаданные записи, и при узком окне обрезается то одно, то другое.
+    private var searchInfo: NSTextField!
     private var tableView: NSTableView!
     private var detailText: NSTextView!
     private var infoLabel: NSTextField!
@@ -27,8 +33,8 @@ final class HistoryWindowController: NSWindowController {
     }()
 
     convenience init() {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 440),
+        let window = HistoryWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 880, height: 460),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered, defer: false)
         window.title = L("history.title")
@@ -43,6 +49,16 @@ final class HistoryWindowController: NSWindowController {
 
     private func buildUI() {
         guard let content = window?.contentView else { return }
+
+        // Поиск над списком: записей копятся тысячи, скролл перестаёт быть навигацией.
+        let search = NSSearchField()
+        search.translatesAutoresizingMaskIntoConstraints = false
+        search.placeholderString = L("history.search")
+        search.sendsSearchStringImmediately = false   // фильтруем по паузе, не по каждой букве
+        search.target = self
+        search.action = #selector(searchChanged)
+        content.addSubview(search)
+        searchField = search
 
         // Список слева
         let listScroll = NSScrollView()
@@ -72,6 +88,13 @@ final class HistoryWindowController: NSWindowController {
         listScroll.documentView = table
         tableView = table
         content.addSubview(listScroll)
+
+        searchInfo = NSTextField(labelWithString: "")
+        searchInfo.translatesAutoresizingMaskIntoConstraints = false
+        searchInfo.textColor = .secondaryLabelColor
+        searchInfo.font = .systemFont(ofSize: 11)
+        searchInfo.lineBreakMode = .byTruncatingTail
+        content.addSubview(searchInfo)
 
         // Детали справа
         let detailScroll = NSScrollView()
@@ -111,7 +134,11 @@ final class HistoryWindowController: NSWindowController {
         content.addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
-            listScroll.topAnchor.constraint(equalTo: content.topAnchor, constant: 12),
+            searchField.topAnchor.constraint(equalTo: content.topAnchor, constant: 12),
+            searchField.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
+            searchField.widthAnchor.constraint(equalToConstant: 250),
+
+            listScroll.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
             listScroll.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
             listScroll.bottomAnchor.constraint(equalTo: exportButton.topAnchor, constant: -10),
             listScroll.widthAnchor.constraint(equalToConstant: 250),
@@ -119,7 +146,12 @@ final class HistoryWindowController: NSWindowController {
             exportButton.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
             exportButton.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -12),
 
-            detailScroll.topAnchor.constraint(equalTo: content.topAnchor, constant: 12),
+            searchInfo.leadingAnchor.constraint(equalTo: listScroll.trailingAnchor, constant: 14),
+            searchInfo.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -12),
+            searchInfo.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
+
+            // Верх обеих панелей на одном уровне — раньше правая начиналась выше левой.
+            detailScroll.topAnchor.constraint(equalTo: listScroll.topAnchor),
             detailScroll.leadingAnchor.constraint(equalTo: listScroll.trailingAnchor, constant: 12),
             detailScroll.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
             detailScroll.bottomAnchor.constraint(equalTo: copyButton.topAnchor, constant: -10),
@@ -152,8 +184,8 @@ final class HistoryWindowController: NSWindowController {
     // MARK: - Экспорт истории
 
     @objc private func exportHistory() {
-        guard !records.isEmpty else { return }
-        let recs = records   // снимок на момент открытия диалога
+        guard !allRecords.isEmpty else { return }
+        let recs = allRecords   // снимок на момент открытия диалога; фильтр поиска не влияет (§7)
 
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
@@ -227,9 +259,24 @@ final class HistoryWindowController: NSWindowController {
         reload()
     }
 
-    private func reload() {
-        records = Store.shared.all()
-        exportButton.isEnabled = !records.isEmpty
+    @objc private func searchChanged() { applyFilter(); updateDetailForSelection() }
+
+    /// Cmd+F ставит курсор в поиск. Ожидаемый жест: без него поле приходится искать мышью.
+    func focusSearch() { window?.makeFirstResponder(searchField) }
+
+    /// Ищем по показанному тексту И по сырому (§7): человек помнит, что он сказал,
+    /// а не то, во что это превратили правила и модель.
+    private func applyFilter() {
+        let q = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if q.isEmpty {
+            records = allRecords
+        } else {
+            records = allRecords.filter {
+                $0.text.localizedCaseInsensitiveContains(q)
+                    || ($0.rawText?.localizedCaseInsensitiveContains(q) ?? false)
+            }
+        }
+        emptyLabel.stringValue = allRecords.isEmpty ? L("history.empty") : L("history.search.none")
         tableView.reloadData()
         if records.isEmpty {
             updateDetail(nil)
@@ -238,6 +285,13 @@ final class HistoryWindowController: NSWindowController {
             tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
             updateDetailForSelection()
         }
+    }
+
+    private func reload() {
+        allRecords = Store.shared.all()
+        // Экспорт остаётся действием по ВСЕЙ истории (§7), фильтр на него не влияет.
+        exportButton.isEnabled = !allRecords.isEmpty
+        applyFilter()
     }
 
     private var selectedRecord: TranscriptRecord? {
@@ -263,23 +317,62 @@ final class HistoryWindowController: NSWindowController {
         deleteButton.isEnabled = true
     }
 
+    /// Показывает текст записи, подсвечивая совпадения с поиском. Для пятиминутной диктовки
+    /// найти запись мало — надо ещё увидеть, ГДЕ внутри неё нужное место. Новых элементов
+    /// интерфейса это не добавляет: подсветка и прокрутка к первому совпадению, больше ничего.
+    @discardableResult
+    private func setDetailText(_ text: String) -> Int {
+        let q = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { detailText.string = text; return 0 }
+
+        let attr = NSMutableAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: 14),
+            .foregroundColor: NSColor.labelColor,
+        ])
+        var first: NSRange?
+        var count = 0
+        var from = text.startIndex
+        while let r = text.range(of: q, options: .caseInsensitive, range: from..<text.endIndex) {
+            let ns = NSRange(r, in: text)
+            attr.addAttributes([.backgroundColor: NSColor.systemYellow.withAlphaComponent(0.45)],
+                               range: ns)
+            if first == nil { first = ns }
+            count += 1
+            from = r.upperBound
+        }
+        detailText.textStorage?.setAttributedString(attr)
+        if let f = first { detailText.scrollRangeToVisible(f) }
+        return count
+    }
+
     private func updateDetail(_ record: TranscriptRecord?) {
         stopPlayback()
         guard let r = record else {
             detailText.string = ""
             infoLabel.stringValue = ""
+            searchInfo.stringValue = ""
             emptyLabel.isHidden = !records.isEmpty
             [copyButton, playButton, deleteButton].forEach { $0?.isEnabled = false }
             return
         }
         emptyLabel.isHidden = true
-        detailText.string = r.text
+        let matches = setDetailText(r.text)
 
         var parts = [Self.dateFormatter.string(from: r.createdAt)]
         if let l = r.language { parts.append(l) }
         if let d = r.durationSec { parts.append(L("common.seconds", d)) }
         if let m = r.model, !m.isEmpty { parts.append(m) }   // движок/модель: whisper… / gigaam…
         infoLabel.stringValue = parts.joined(separator: " · ")
+
+        // Сколько совпадений в ЭТОЙ записи — иначе на длинной диктовке видно только первое,
+        // и непонятно, стоит ли листать дальше. Отдельный случай: запись попала в список
+        // по сырому тексту (§7), а в показанном её нет — без пояснения это выглядит багом.
+        let q = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if q.isEmpty { searchInfo.stringValue = "" }
+        else if matches > 0 { searchInfo.stringValue = L("history.search.matches", matches) }
+        else if r.rawText?.localizedCaseInsensitiveContains(q) == true {
+            searchInfo.stringValue = L("history.search.inRaw")
+        } else { searchInfo.stringValue = "" }
 
         copyButton.isEnabled = true
         deleteButton.isEnabled = true
@@ -390,6 +483,19 @@ extension HistoryWindowController: NSTableViewDataSource, NSTableViewDelegate {
 
 /// Таблица, отдающая клавишу Delete/Backspace наружу: удалять выделенное с клавиатуры —
 /// ожидаемое поведение маковского списка, особенно когда выделять можно пачкой.
+/// Окно истории: перехватывает Cmd+F, где бы ни стоял фокус — в списке, в тексте записи
+/// или нигде. Через `keyEquivalent` кнопки это не сделать: скрытые кнопки на них не отвечают.
+final class HistoryWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "f" {
+            (windowController as? HistoryWindowController)?.focusSearch()
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 final class HistoryTableView: NSTableView {
     var onDeleteKey: (() -> Void)?
 

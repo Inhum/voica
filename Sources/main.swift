@@ -95,6 +95,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         edit.addItem(withTitle: L("edit.copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         edit.addItem(withTitle: L("edit.paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         edit.addItem(withTitle: L("edit.selectAll"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(.separator())
+        // Cmd+F через пункт меню, а не через перехват в окне: меню получает событие первым,
+        // и команда заодно становится видимой. Цель — явная, чтобы не зависеть от того,
+        // где сейчас фокус (список, текст записи, поле поиска).
+        let find = NSMenuItem(title: L("edit.find"), action: #selector(findInHistory), keyEquivalent: "f")
+        find.target = self
+        edit.addItem(find)
 
         return mainMenu
     }
@@ -428,6 +435,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Прочие пункты меню (заглушки до следующих этапов)
 
     @objc private func showHistory()  { historyWindow.reloadAndShow() }
+
+    /// Cmd+F: открыть историю, если закрыта, и поставить курсор в поиск.
+    @objc private func findInHistory() {
+        if historyWindow.window?.isVisible != true { historyWindow.reloadAndShow() }
+        historyWindow.focusSearch()
+    }
     @objc private func showSettings() { settingsWindow.show() }
 
     @objc private func showAbout() { settingsWindow.showAbout() }

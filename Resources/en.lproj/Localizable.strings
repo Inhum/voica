@@ -14,6 +14,7 @@
 "edit.cut" = "Cut";
 "edit.copy" = "Copy";
 "edit.paste" = "Paste";
+"edit.find" = "Find in History…";
 "edit.selectAll" = "Select All";
 
 /* Alerts */
@@ -35,6 +36,10 @@
 /* History window */
 "history.title" = "Voica — History";
 "history.empty" = "History is empty";
+"history.search" = "Search text";
+"history.search.matches" = "matches: %d";
+"history.search.inRaw" = "found in the original text";
+"history.search.none" = "Nothing found";
 "history.play" = "Play";
 "history.stop" = "Stop";
 "history.delete" = "Delete";
@@ -104,9 +109,9 @@
 "settings.stt.language.en" = "English";
 "settings.stt.hint" = "Applies to the cloud engine only. Turbo is faster; Large v3 can be a touch more accurate. Auto-detect handles around a hundred languages; forcing ru or en only helps short phrases it gets wrong. The local engine (GigaAM) is Russian-only and ignores these.";
 "settings.vocab.header" = "Vocabulary";
-"settings.vocab.hint" = "Terms Whisper often mishears — names, jargon, anglicisms. Applied to every dictation as a hint (not a strict rule). E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта. Cloud engine only: the local engine can't take a hint — use AI term fixing below instead.";
+"settings.vocab.hint" = "Terms speech recognition often mishears — names, jargon, anglicisms. E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта. Voica pulls garbled spellings back to the ones listed here by rule — no key, no internet, both engines. The cloud engine also gets the list as a hint during recognition (not a strict rule); the local engine can't take one.";
 "settings.vocab.llm" = "Fix terms with AI (extra Groq request)";
-"settings.vocab.llm.hint" = "After transcription, a Groq language model reliably fixes garbled vocabulary terms, matching grammatical case and context. Adds ~1–2 s. If the request fails, the raw text is used. Works with both engines — cloud and local (needs the API key and internet).";
+"settings.vocab.llm.hint" = "An extra pass on top of the rules: a Groq language model handles what rules cannot — grammatical case and badly garbled terms. Adds ~1–2 s and needs the API key and internet. If the request fails you keep the text the rules produced, so it never makes things worse. Works with both engines.";
 "settings.vocab.llm.checking" = "Checking model availability…";
 "settings.vocab.llm.ok" = "Model available";
 "settings.vocab.llm.using" = "Model available: %@";
