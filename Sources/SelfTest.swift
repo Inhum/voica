@@ -252,6 +252,23 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
+        // Вычистка рассуждений reasoning-моделей (§6.1). Баг с qwen/qwen3.6-27b:
+        // ход мысли приезжал в текст пользователя вместо диктовки.
+        check("strip think block",
+              GroqClient.stripReasoning("<think>рассуждаю</think>Привет") == "Привет")
+        check("strip think multiline + case",
+              GroqClient.stripReasoning("<THINK>\nстрока\nещё\n</think>\n\nПривет") == "Привет")
+        check("strip think with attributes",
+              GroqClient.stripReasoning("<think foo=\"1\">x</think>Привет") == "Привет")
+        check("strip several think blocks",
+              GroqClient.stripReasoning("<think>a</think>Привет<think>b</think> мир") == "Привет мир")
+        check("strip unclosed think → empty (ответ обрезали по лимиту токенов)",
+              GroqClient.stripReasoning("<think>рассуждаю и не закончил").isEmpty)
+        check("strip keeps plain text intact",
+              GroqClient.stripReasoning("  Привет, kubectl.  ") == "Привет, kubectl.")
+        check("strip does not eat lookalike word",
+              GroqClient.stripReasoning("я think вслух") == "я think вслух")
+
         // Динамический выбор chat-модели: фильтр, приоритет-цепочка, дефолты, миграция
         check("chat filter keeps llama", GroqClient.isChatModelID("llama-3.3-70b-versatile"))
         check("chat filter keeps gpt-oss", GroqClient.isChatModelID("openai/gpt-oss-120b"))
@@ -261,6 +278,11 @@ enum SelfTest {
         // compound — агентная система с роутингом, а не chat-модель
         check("chat filter drops compound", !GroqClient.isChatModelID("groq/compound"))
         check("chat filter drops compound-mini", !GroqClient.isChatModelID("groq/compound-mini"))
+        // allam — арабоязычная: первая по алфавиту, а значит молчаливый запасной выбор
+        check("chat filter drops allam", !GroqClient.isChatModelID("allam-2-7b"))
+        // Страховка от коллизии подстрок: "allam" не должен цеплять meta-llama ("…a-llama…")
+        check("chat filter keeps meta-llama",
+              GroqClient.isChatModelID("meta-llama/llama-4-scout-17b-16e-instruct"))
         check("pick prefers chain",
               GroqClient.pickRecommended(from: ["llama-3.1-8b-instant", "openai/gpt-oss-120b"]) == "openai/gpt-oss-120b")
         // Снятая с раздачи модель не должна выигрывать у живой, даже если провайдер её ещё отдаёт
@@ -271,8 +293,13 @@ enum SelfTest {
         check("pick empty → nil", GroqClient.pickRecommended(from: []) == nil)
 
         let savedModel = UserDefaults.standard.string(forKey: "chatModel")
+        let savedResolved = UserDefaults.standard.string(forKey: "resolvedChatModel")
         Prefs.chatModel = "auto"
         check("chatModel default auto", Prefs.chatModel == "auto")
+        // Кэш резолва надо сбросить явно, иначе тест читает реальное состояние машины:
+        // после ручного выбора модели в настройках там лежит она, а не сид, и проверка
+        // падает на ровном месте. На CI настройки чистые, поэтому это не ловилось.
+        UserDefaults.standard.removeObject(forKey: "resolvedChatModel")
         check("activeChatModel default seed",
               GroqClient.activeChatModel == GroqClient.defaultChatModel)
         Prefs.chatModel = "qwen/qwen3-32b"   // снятая с раздачи → миграция на auto
@@ -283,6 +310,7 @@ enum SelfTest {
         check("manual chatModel round-trip", Prefs.chatModel == "llama-3.1-8b-instant")
         check("activeChatModel honors manual", GroqClient.activeChatModel == "llama-3.1-8b-instant")
         if let savedModel { Prefs.chatModel = savedModel } else { UserDefaults.standard.removeObject(forKey: "chatModel") }
+        if let savedResolved { Prefs.resolvedChatModel = savedResolved } else { UserDefaults.standard.removeObject(forKey: "resolvedChatModel") }
 
         let savedPP = Prefs.llmPostProcess
         Prefs.llmPostProcess = true

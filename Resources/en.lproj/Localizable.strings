@@ -102,7 +102,7 @@
 "settings.stt.language.auto" = "Auto-detect";
 "settings.stt.language.ru" = "Russian";
 "settings.stt.language.en" = "English";
-"settings.stt.hint" = "Applies to the cloud engine only. Turbo is faster; Large v3 can be a touch more accurate. Forcing a language helps short phrases that auto-detect gets wrong. The local engine (GigaAM) is Russian-only and ignores these.";
+"settings.stt.hint" = "Applies to the cloud engine only. Turbo is faster; Large v3 can be a touch more accurate. Auto-detect handles around a hundred languages; forcing ru or en only helps short phrases it gets wrong. The local engine (GigaAM) is Russian-only and ignores these.";
 "settings.vocab.header" = "Vocabulary";
 "settings.vocab.hint" = "Terms Whisper often mishears — names, jargon, anglicisms. Applied to every dictation as a hint (not a strict rule). E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта. Cloud engine only: the local engine can't take a hint — use AI term fixing below instead.";
 "settings.vocab.llm" = "Fix terms with AI (extra Groq request)";

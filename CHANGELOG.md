@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.14] — 2026-08-19 — Reasoning models no longer leak their thinking
+
+### Fixed
+- **Some chat models pasted their own reasoning instead of your dictation.** Newer models return
+  their train of thought in the reply, wrapped in `<think>…</think>`, with the answer after it —
+  and Voica inserted the lot. This was not exotic: `qwen/qwen3.6-27b` is the second link in the
+  default model chain, so anyone whose `openai/gpt-oss-120b` is blocked hit it on every dictation.
+  Reasoning blocks are now stripped before the text reaches you. Reported by a user.
+- **A second guard against nonsense.** Fixing terms swaps individual words, so the reply can't be
+  wildly longer than what you dictated. If it is — or if nothing is left after stripping — Voica
+  falls back to the raw text, the same way it already does on any error. This catches chatty
+  models in general, not just the `<think>` format.
+- **The self-test no longer depends on the machine it runs on.** The check for "in auto mode the
+  active model equals the seed" read the real resolved-model cache, so it failed on any machine
+  where a model had been picked by hand. It passed on CI only because settings there are pristine.
+
+### Changed
+- **`allam-2-7b` is no longer offered as a chat model.** Nothing wrong with it — but the live model
+  list is sorted alphabetically and `allam` lands first, which quietly made an Arabic-tuned model
+  the fallback for correcting Russian terms. It can come back the day someone actually dictates
+  in Arabic.
+- **The language hint now says auto-detect covers around a hundred languages.** The picker offers
+  auto, ru and en, which read like the full list of what Voica understands. It isn't: everything
+  goes through auto-detect, and forcing ru or en only helps short phrases it gets wrong.
+
 ## [0.9.13] — 2026-08-14 — Blocked-model notification
 
 ### Added

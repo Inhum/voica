@@ -141,7 +141,13 @@ enum GroqClient {
     /// которых у организации может не быть (→ 403 вместо ответа).
     static func isChatModelID(_ id: String) -> Bool {
         let lower = id.lowercased()
-        let deny = ["whisper", "tts", "orpheus", "guard", "embed", "moderation", "distil", "compound"]
+        // `allam` — арабоязычная модель. Отсекается не потому, что плоха, а потому, что список
+        // сортируется по алфавиту, а `pickRecommended` в крайнем случае берёт первый элемент:
+        // «allam-2-7b» оказывается первым в алфавите и молча становится запасным выбором для
+        // исправления РУССКИХ терминов. Все пользователи сейчас русскоязычные; если придёт
+        // запрос на арабский — вернём и подумаем, как выбирать по языку, а не по алфавиту.
+        let deny = ["whisper", "tts", "orpheus", "guard", "embed", "moderation", "distil",
+                    "compound", "allam"]
         return !deny.contains { lower.contains($0) }
     }
 
@@ -218,6 +224,26 @@ enum GroqClient {
         """
     }
 
+    /// Убирает блок рассуждений reasoning-моделей из ответа.
+    /// Такие модели пишут ход мысли прямо в `content` тегом `<think>…</think>`, и без вычистки
+    /// он целиком уезжал в текст пользователя вместо диктовки. Ловится не гипотетически:
+    /// `qwen/qwen3.6-27b` — второе звено нашей цепочки (§6.1), то есть любой, у кого
+    /// заблокирована `openai/gpt-oss-120b`, попадал в это на каждой диктовке.
+    /// Незакрытый тег означает, что ответ обрезали по `max_completion_tokens` посреди
+    /// рассуждения — полезного текста дальше уже нет, режем до конца.
+    static func stripReasoning(_ s: String) -> String {
+        var out = s
+        while let r = out.range(of: "<think[^>]*>[\\s\\S]*?</think>",
+                                options: [.regularExpression, .caseInsensitive]) {
+            out.removeSubrange(r)
+        }
+        if let r = out.range(of: "<think[^>]*>[\\s\\S]*",
+                             options: [.regularExpression, .caseInsensitive]) {
+            out.removeSubrange(r)
+        }
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Исправляет искажённые термины из словаря через Groq LLM (`activeChatModel`).
     /// Fail-open: при любой ошибке/таймауте возвращает исходный текст —
     /// диктовка никогда не блокируется постобработкой. Если модель отдала 404 (Groq её
@@ -267,8 +293,14 @@ enum GroqClient {
                   let content = msg["content"] as? String else {
                 return completion(text)   // fail-open
             }
-            let cleaned = content.trimmingCharacters(in: .whitespacesAndNewlines)
-            completion(cleaned.isEmpty ? text : cleaned)
+            let cleaned = stripReasoning(content)
+            // Страховка к fail-open: исправление терминов подменяет отдельные слова, поэтому
+            // длина ответа не может радикально отличаться от исходной. Если модель всё-таки
+            // наговорила лишнего (или после вычистки не осталось ничего) — берём исходный текст.
+            guard !cleaned.isEmpty, cleaned.count <= text.count * 2 + 50 else {
+                return completion(text)
+            }
+            completion(cleaned)
         }.resume()
     }
 
