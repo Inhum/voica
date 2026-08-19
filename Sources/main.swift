@@ -526,6 +526,32 @@ if CommandLine.arguments.contains("--notify-test") {
 // Служебный режим: скачать и установить локальную модель без GUI.
 // Проверяет весь конвейер загрузчика (сеть → SHA-256 → распаковка) на настоящем
 // release-ассете; $VOICA_GIGAAM_URL переопределяет источник.
+// Скрытый флаг разработчика: прогнать готовый WAV 16 кГц моно через локальный движок и
+// напечатать текст. Нужен, чтобы проверять правки склейки чанков на СОХРАНЁННОМ аудио, а не
+// переговаривать диктовку заново — иначе изменения в тексте не отличить от новой записи.
+// Заодно это заготовка под «Transcribe audio file…» из планов на 1.0.
+if let i = CommandLine.arguments.firstIndex(of: "--transcribe"),
+   i + 1 < CommandLine.arguments.count {
+    let path = CommandLine.arguments[i + 1]
+    guard LocalSTT.isModelAvailable else {
+        print("Локальная модель не установлена (--fetch-model)")
+        exit(1)
+    }
+    do {
+        let sig = try LocalSTT.loadWav16k(URL(fileURLWithPath: path))
+        let start = Date()
+        let text = try LocalSTT.shared.transcribe(sig)
+        FileHandle.standardError.write(String(format: "· %.1f с аудио, распознано за %.1f с\n",
+                                              Double(sig.count) / 16000.0,
+                                              -start.timeIntervalSinceNow).data(using: .utf8)!)
+        print(text)
+        exit(0)
+    } catch {
+        print("Ошибка: \(error.localizedDescription)")
+        exit(1)
+    }
+}
+
 if CommandLine.arguments.contains("--fetch-model") {
     print("Качаю \(ModelDownloader.downloadURL.absoluteString)")
     var ok = false

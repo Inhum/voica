@@ -162,6 +162,25 @@ enum SelfTest {
 
         // Локальный движок: склейка кусков с нахлёстом (де-дуп слов на стыке)
         check("stitch overlap dedup", LocalSTT.stitch("привет мир как", "мир как дела") == "привет мир как дела")
+        // Задвоение на стыке окон — оба случая взяты из настоящей длинной диктовки пользователя.
+        // 1) Модель по-разному согласует одно и то же слово в соседних окнах.
+        check("stitch dedup despite word ending",
+              LocalSTT.stitch("руководителя одного отдела, руководителя другого отдела",
+                              "одного отдела, руководитель другого отдела приходилось")
+              == "руководителя одного отдела, руководителя другого отдела приходилось")
+        // 2) Окно оборвало слово на полуслове: огрызок мешал сравнению и оставался в тексте.
+        check("stitch drops cut-off tail word",
+              LocalSTT.stitch("может быть из чего вообще строить из кип",
+                              "может быть из чего вообще строить из кирпича")
+              == "может быть из чего вообще строить из кирпича")
+        // Терпимость не должна склеивать разные короткие слова.
+        check("stitch keeps different short words",
+              LocalSTT.stitch("я купил стол", "стоп машина") == "я купил стол стоп машина")
+        check("stitch no overlap concatenates",
+              LocalSTT.stitch("раз два", "три четыре") == "раз два три четыре")
+        check("words similar on ending", LocalSTT.wordsSimilar("руководителя", "руководитель"))
+        check("words similar rejects short lookalikes", !LocalSTT.wordsSimilar("стол", "стоп"))
+        check("words similar rejects different", !LocalSTT.wordsSimilar("кирпича", "газоблока"))
         check("stitch no overlap", LocalSTT.stitch("раз два", "три четыре") == "раз два три четыре")
         check("stitch case+punct", LocalSTT.stitch("развернул Kubernetes через", "Через kubectl.") == "развернул Kubernetes через kubectl.")
         check("stitch empty", LocalSTT.stitch("", "текст") == "текст" && LocalSTT.stitch("текст", "") == "текст")

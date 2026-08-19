@@ -146,6 +146,30 @@ final class LocalSTT {
     /// Склейка соседних кусков с убиранием дубля на стыке: ищем наибольшее совпадение
     /// «хвост слов A == начало слов B» (без учёта регистра/пунктуации) и отбрасываем дубль;
     /// если совпадения нет — обычное соединение через пробел (не хуже прежнего).
+    /// Одно и то же слово на стыке двух окон модель пишет по-разному: путает окончание
+    /// («руководителя» против «руководитель») — контекст справа и слева у окон разный.
+    /// Точное сравнение таких пар не ловит, нахлёст не находится, и оба варианта уезжают
+    /// в текст — то самое задвоение. Поэтому сравниваем терпимо: слово то же, если совпало
+    /// целиком либо расходится только хвостом. Короткие слова — только точно, иначе
+    /// «стол» склеится со «стоп».
+    static func wordsSimilar(_ x: String, _ y: String) -> Bool {
+        if x == y { return true }
+        let longer = max(x.count, y.count)
+        guard longer >= 6 else { return false }
+        let common = zip(x, y).prefix { $0.0 == $0.1 }.count
+        return Double(common) / Double(longer) >= 0.8
+    }
+
+    /// Наибольшее k, при котором хвост `an` и начало `bn` — одни и те же слова. 0 — не нашли.
+    private static func overlapLength(_ an: [String], _ bn: [String]) -> Int {
+        var k = min(12, an.count, bn.count)   // окно поиска нахлёста (~2с речи)
+        while k >= 1 {
+            if zip(an.suffix(k), bn.prefix(k)).allSatisfy({ wordsSimilar($0.0, $0.1) }) { return k }
+            k -= 1
+        }
+        return 0
+    }
+
     static func stitch(_ a: String, _ b: String) -> String {
         if a.isEmpty { return b }
         if b.isEmpty { return a }
@@ -153,14 +177,19 @@ final class LocalSTT {
         let bw = b.split(separator: " ").map(String.init)
         func norm(_ s: String) -> String { s.lowercased().filter { $0.isLetter || $0.isNumber } }
         let an = aw.map(norm), bn = bw.map(norm)
-        let maxK = min(12, aw.count, bw.count)   // окно поиска нахлёста (~2с речи)
-        var overlap = 0
-        var k = maxK
-        while k >= 1 {
-            if Array(an.suffix(k)) == Array(bn.prefix(k)) { overlap = k; break }
-            k -= 1
+
+        let overlap = overlapLength(an, bn)
+        if overlap > 0 { return (aw + bw.dropFirst(overlap)).joined(separator: " ") }
+
+        // Нахлёста нет. Частый случай: окно оборвало последнее слово на полуслове
+        // («…из кип» против «…из кирпича») — огрызок не похож ни на что и рушит сравнение
+        // всего окна. Пробуем без него и, если так нахлёст нашёлся, выбрасываем огрызок:
+        // целое слово есть в следующем куске.
+        if aw.count > 1 {
+            let k = overlapLength(Array(an.dropLast()), bn)
+            if k > 0 { return (aw.dropLast() + bw.dropFirst(k)).joined(separator: " ") }
         }
-        return (aw + bw.dropFirst(overlap)).joined(separator: " ")
+        return (aw + bw).joined(separator: " ")
     }
 
     private func infer(model: MLModel, chunk: [Float]) throws -> [Int] {
