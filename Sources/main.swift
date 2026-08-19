@@ -573,6 +573,19 @@ if let i = CommandLine.arguments.firstIndex(of: "--transcribe"),
     }
 }
 
+// Печатает промпт ИИ-исправления для заданных словаря и текста. Нужен скрипту сравнения
+// chat-моделей: иначе промпт пришлось бы копировать в скрипт, и он бы разошёлся с рабочим,
+// а замер молча начал бы измерять не то.
+if let i = CommandLine.arguments.firstIndex(of: "--print-prompt"),
+   i + 2 < CommandLine.arguments.count {
+    guard let p = GroqClient.postProcessPrompt(text: CommandLine.arguments[i + 2],
+                                               vocabulary: CommandLine.arguments[i + 1]) else {
+        FileHandle.standardError.write("пустой словарь\n".data(using: .utf8)!); exit(1)
+    }
+    print(p)
+    exit(0)
+}
+
 // Прогон нормализатора по файлу со строками: печатает только то, что изменилось.
 // Нужен, чтобы проверять правила на настоящей истории, а не на придуманных примерах —
 // ложное срабатывание на обычной речи иначе не поймать.
