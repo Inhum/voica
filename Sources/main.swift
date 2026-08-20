@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
 
+        recorder.onCaptureDied = { [weak self] _ in self?.handleCaptureDied() }
         NSApp.mainMenu = buildMainMenu()   // нужен Edit-меню, иначе не работают Cmd+V/C/X/A
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -278,6 +279,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         state = .idle
     }
 
+    /// Микрофон замолчал посреди диктовки (§3). Записанное ДО отказа — валидный файл, поэтому
+    /// распознаём его, а не выбрасываем: сказанное человеком терять нельзя. И говорим об отказе
+    /// сразу — иначе он узнает о нём в конце, по обрубленному тексту, когда переговорить уже
+    /// нечего. На Windows такой отказ съел у пользователя шесть минут речи из шести с половиной.
+    private func handleCaptureDied() {
+        guard state == .recording, let rec = recorder.stop() else { return }
+        notifyMicDied()
+        guard rec.duration >= 0.3 else {
+            try? FileManager.default.removeItem(at: rec.url)
+            state = .idle
+            return
+        }
+        state = .transcribing
+        if Prefs.sttEngine == "local", LocalSTT.isModelAvailable { transcribeLocally(rec: rec) }
+        else { transcribeViaCloud(rec: rec) }
+    }
+
     private func stopDictation() {
         guard state == .recording, let rec = recorder.stop() else { return }
         // Слишком короткая запись — вероятно случайное нажатие.
@@ -392,6 +410,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             content.title = L("notify.chatBlocked.title")
             content.body = L("notify.chatBlocked.body", model)
             center.add(UNNotificationRequest(identifier: "voica-chat-blocked",
+                                             content: content, trigger: nil))
+        }
+    }
+
+    /// Отказ микрофона — системным уведомлением, без модального окна: диктовка в этот момент
+    /// уже переходит в распознавание, и модалка перехватила бы фокус ровно тогда, когда текст
+    /// собирается вставляться.
+    private func notifyMicDied() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert]) { granted, _ in
+            guard granted else {
+                NSLog("Voica: микрофон перестал отдавать звук — распознаю записанное")
+                return
+            }
+            let content = UNMutableNotificationContent()
+            content.title = L("notify.micdied.title")
+            content.body = L("notify.micdied.body")
+            center.add(UNNotificationRequest(identifier: "voica-mic-died",
                                              content: content, trigger: nil))
         }
     }

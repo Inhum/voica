@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.16] — 2026-08-20 — Nothing said is quietly lost
+
+Both fixes come from the Windows port, found on real dictations. Both existed here too — one
+was losing text on every long recording, the other had simply not happened to us yet.
+
+### Fixed
+- **Long dictations lost fewer repeated fragments still.** A run of overlapping words was only
+  accepted if every word matched, so a single divergence broke it — "управляющий" against
+  "управляющего" is 9 letters out of 12, just under the threshold, and the whole phrase went
+  into the text twice. A run of four words or more now forgives one mismatch. The forgiven word
+  can never be the last one in the run: a divergence right at the seam is usually a word cut in
+  half by the window edge, and that has to be dropped rather than forgiven. The threshold itself
+  was left alone — lowering it would have been fitting one case instead of fixing the cause.
+  Re-checked on the same six-minute recording used before: six more doubled fragments gone,
+  nothing else touched.
+
+### Added
+- **Voica notices when the microphone stops sending audio, and keeps what was recorded.** Until
+  now a capture failure mid-dictation was invisible: the state stayed "recording", the capsule
+  kept animating, and nothing more reached the file. You would find out at the end, from a text
+  that stopped halfway, with nothing left to repeat. On Windows this ate six minutes of speech
+  out of six and a half. Voica now watches the recording clock — it keeps advancing while
+  recording and freezes when capture dies, and audio keeps arriving even in complete silence, so
+  a three-second pause means failure rather than a quiet speaker. The dictation ends at once, you
+  are told the microphone went quiet, and everything recorded before that is transcribed.
+
 ## [0.9.15] — 2026-08-19 — Terms are fixed by rules, before any AI
 
 Until now the vocabulary did nothing at all on the local engine: the recognition hint is a cloud
