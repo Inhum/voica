@@ -50,22 +50,33 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
   [inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml)). One-time ~400 MB
   model download with a progress bar; the model
   can be deleted anytime in Settings → Data. If the cloud is unreachable, Voica automatically
-  falls back to the local model (with a notification). Trade-offs: English words may come out
-  transliterated in Cyrillic, and the vocabulary hint stays cloud-only.
+  falls back to the local model (with a notification). Trade-offs: Latin words can come out as a
+  mix of alphabets (`Dпсик` instead of `DeepSeek`) — that is what the vocabulary fixes, see
+  below. The recognition hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
   window — your choice in Settings), and always copied to the clipboard as a fallback.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete
   (one entry or a batch selected with Cmd/Shift), and export the whole history to
   Markdown / CSV / JSON.
+- **Search in History** (Cmd+F) — searches the finished text *and* what recognition heard
+  before any fixing. You remember what you said, not what it was turned into: dictate
+  "клодкод" and you will find it by that as well as by `Claude Code`. Matches are highlighted
+  and counted.
 - **Audio retention** with auto-cleanup (default 30 days, configurable; text history is kept).
 - **Cloud recognition model & language** (Settings → Dictation): Turbo (faster) or Large v3
   (more accurate); language auto-detects by default (great for mixed speech) or can be forced to
   Russian/English for short phrases. The local engine is Russian-only.
-- **Vocabulary** — list terms Whisper often mishears (names, jargon, anglicisms) and they're
-  passed as a hint on every dictation to bias spelling. Soft limit ~800 characters (Whisper
-  only reads the last ~224 tokens of the hint; a live counter in Settings shows the budget).
-  Optionally, an **AI pass** (Groq LLM) reliably fixes the terms that still come out
-  garbled — matching grammatical case and context.
+- **Vocabulary** — list the terms recognition mangles (names, jargon, anglicisms). It works in
+  three layers:
+  - **Rules, right on your Mac.** Garbled spellings are pulled back to the ones you listed —
+    no key, no internet, both engines — and it switches itself on whenever the vocabulary
+    isn't empty. This is what makes the local engine genuinely self-contained.
+  - **A recognition hint** — cloud only: the list goes to Whisper and biases what it hears.
+    Soft limit ~800 characters (the model only reads the last ~224 tokens; a live counter in
+    Settings shows the budget), so keep the terms that matter at the end of the list.
+  - **An AI pass** (Groq LLM), optional — handles what rules cannot: grammatical case and
+    badly garbled terms. Needs the key and internet; if the request fails you keep the text
+    the rules produced, so it never makes things worse.
 - **Localized UI** — English and Russian, follows the system language.
 - **Update checks** — optionally checks GitHub for a newer version on launch and points you to
   the release page. Never downloads or installs anything by itself; can be turned off.
@@ -75,6 +86,10 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
   anonymous update check to GitHub.
 
 ## Screenshots
+
+<p align="center">
+  <img src="docs/history.png" width="900" alt="History with search — showing what was said before fixing">
+</p>
 
 <p align="center">
   <img src="docs/settings-general.png" width="440" alt="Settings — General">
