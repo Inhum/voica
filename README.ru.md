@@ -89,15 +89,15 @@ Voica бесплатна и останется бесплатной — все �
 ## Скриншоты
 
 <p align="center">
-  <img src="docs/history.png" width="900" alt="История с поиском — видно, что было сказано до исправления">
+  <img src="docs/history.png" width="100%" alt="История с поиском — видно, что было сказано до исправления">
 </p>
 
 <p align="center">
-  <img src="docs/settings-general.png" width="440" alt="Настройки — Основные">
-  <img src="docs/settings-dictation.png" width="440" alt="Настройки — Диктовка">
-  <img src="docs/settings-vocabulary.png" width="440" alt="Настройки — Словарь">
-  <img src="docs/settings-data.png" width="440" alt="Настройки — Данные">
-  <img src="docs/settings-about.png" width="440" alt="Настройки — О программе">
+  <img src="docs/settings-general.png" width="49%" alt="Настройки — Основные">
+  <img src="docs/settings-dictation.png" width="49%" alt="Настройки — Диктовка">
+  <img src="docs/settings-vocabulary.png" width="49%" alt="Настройки — Словарь">
+  <img src="docs/settings-data.png" width="49%" alt="Настройки — Данные">
+  <img src="docs/settings-about.png" width="49%" alt="Настройки — О программе">
 </p>
 
 ## Установка

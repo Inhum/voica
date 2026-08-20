@@ -88,15 +88,15 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
 ## Screenshots
 
 <p align="center">
-  <img src="docs/history.png" width="900" alt="History with search — showing what was said before fixing">
+  <img src="docs/history.png" width="100%" alt="History with search — showing what was said before fixing">
 </p>
 
 <p align="center">
-  <img src="docs/settings-general.png" width="440" alt="Settings — General">
-  <img src="docs/settings-dictation.png" width="440" alt="Settings — Dictation">
-  <img src="docs/settings-vocabulary.png" width="440" alt="Settings — Vocabulary">
-  <img src="docs/settings-data.png" width="440" alt="Settings — Data">
-  <img src="docs/settings-about.png" width="440" alt="Settings — About">
+  <img src="docs/settings-general.png" width="49%" alt="Settings — General">
+  <img src="docs/settings-dictation.png" width="49%" alt="Settings — Dictation">
+  <img src="docs/settings-vocabulary.png" width="49%" alt="Settings — Vocabulary">
+  <img src="docs/settings-data.png" width="49%" alt="Settings — Data">
+  <img src="docs/settings-about.png" width="49%" alt="Settings — About">
 </p>
 
 ## Install
