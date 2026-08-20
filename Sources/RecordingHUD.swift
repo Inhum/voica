@@ -20,7 +20,8 @@ final class RecordingHUD: NSObject {
     private let w: CGFloat = 176, h: CGFloat = 44
 
     /// Показать плашку в состоянии «пишу». Идемпотентно. Главный поток.
-    func show(onCancel: @escaping () -> Void, onStop: @escaping () -> Void) {
+    func show(onCancel: @escaping () -> Void, onStop: @escaping () -> Void,
+              level: @escaping () -> CGFloat = { 1 }) {
         self.onCancel = onCancel
         self.onStop = onStop
         ensurePanel()
@@ -31,6 +32,7 @@ final class RecordingHUD: NSObject {
                                 symbolColor: NSColor.white.withAlphaComponent(0.85),
                                 bg: NSColor.white.withAlphaComponent(0.14))
         let waveView = WaveformView(frame: NSRect(x: 0, y: 0, width: 72, height: 22))
+        waveView.level = level
         waveView.translatesAutoresizingMaskIntoConstraints = false
         waveView.widthAnchor.constraint(equalToConstant: 72).isActive = true
         waveView.heightAnchor.constraint(equalToConstant: 22).isActive = true
@@ -144,6 +146,10 @@ final class RecordingHUD: NSObject {
 final class WaveformView: NSView {
     private var bars: [CALayer] = []
     private var timer: Timer?
+    /// Откуда брать громкость входа. По умолчанию единица — тогда волна ведёт себя как раньше.
+    var level: () -> CGFloat = { 1 }
+    /// Сглаженный уровень: сырой прыгает от кадра к кадру и волна дёргается.
+    private var smoothed: CGFloat = 0
     private var phase = 0.0
     private let n = 7
     private let barW: CGFloat = 3
@@ -185,12 +191,20 @@ final class WaveformView: NSView {
 
     private func tick() {
         phase += 0.32
+        // Сглаживаем: сырой уровень прыгает на каждом кадре, и волна дёргается рывками.
+        // Вверх тянемся быстро (слог должен быть виден сразу), вниз опускаемся плавно.
+        let raw = level()
+        smoothed += (raw - smoothed) * (raw > smoothed ? 0.5 : 0.15)
+        // Форма волны остаётся синусоидой, громкость задаёт её АМПЛИТУДУ. Полностью гасить
+        // нельзя: в паузе между словами плашка превратилась бы в мёртвую полоску и читалась
+        // как зависание, поэтому снизу оставлен заметный минимум.
+        let scale = 0.22 + smoothed * 0.78
         let maxH = bounds.height - 4
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         for (i, bar) in bars.enumerated() {
             let s = (sin(phase + Double(i) * 0.9) + 1) / 2           // 0…1
-            let h = 4 + CGFloat(s) * (maxH - 4)
+            let h = 4 + CGFloat(s) * scale * (maxH - 4)
             bar.frame = NSRect(x: bar.frame.minX, y: (bounds.height - h) / 2, width: barW, height: h)
         }
         CATransaction.commit()

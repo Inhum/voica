@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.17] — 2026-08-20 — The capsule now shows what the microphone hears
+
+### Changed
+- **The wave in the recording capsule follows your actual voice** instead of running the same
+  animation regardless. This is not decoration: with a fixed animation, a microphone held by
+  another app, the wrong input selected, or simply sitting too far away all look exactly like a
+  normal recording — and you find out something was wrong only from the empty text at the end.
+  Now the wave rises on speech and settles in pauses, so cover the microphone and you will see
+  it go flat. The level comes from the system's own loudness reading rather than arithmetic over
+  raw samples — that arithmetic is what cost a Windows user six minutes of speech, and in Swift
+  it would crash the app outright. In silence the wave quiets down but never freezes: a dead flat
+  line reads as a hung application. Windows has worked this way since 0.6.0.
+
 ## [0.9.16] — 2026-08-20 — Nothing said is quietly lost
 
 Both fixes come from the Windows port, found on real dictations. Both existed here too — one

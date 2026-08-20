@@ -190,7 +190,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if Prefs.recordingHUD {
                 stopPulse()
                 recordingHUD.show(onCancel: { [weak self] in self?.cancelDictation() },
-                                  onStop:   { [weak self] in self?.stopDictation() })
+                                  onStop:   { [weak self] in self?.stopDictation() },
+                                  level:    { [weak self] in self?.recorder.inputLevel ?? 0 })
             } else {
                 recordingHUD.hide()
                 startPulse()

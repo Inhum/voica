@@ -46,6 +46,7 @@ final class Recorder: NSObject {
         do {
             let rec = try AVAudioRecorder(url: url, settings: settings)
             rec.delegate = self
+            rec.isMeteringEnabled = true
             guard rec.record() else { return false }
             recorder = rec
             currentURL = url
@@ -68,6 +69,23 @@ final class Recorder: NSObject {
     }
 
     var isRecording: Bool { recorder?.isRecording ?? false }
+
+    /// Текущая громкость входа, 0…1 — для живой волны в плашке (§4.2).
+    ///
+    /// Берём готовый средний уровень у `AVAudioRecorder`, а НЕ считаем пик по сэмплам вручную:
+    /// ручная арифметика на `Int16` — источник бага, который на Windows съел шесть минут речи
+    /// (§3, модуль `Int16.min` не представим и приходит именно при клиппинге; в Swift это не
+    /// сбой, а падение). `averagePower` отдаёт децибелы во `Float`, переполняться там нечему.
+    ///
+    /// Децибелы приводим к доле: тишина у микрофона это примерно −50 дБ и ниже, обычная речь
+    /// живёт в −35…−10. Растягиваем этот диапазон на всю высоту, иначе волна почти не двигается.
+    var inputLevel: CGFloat {
+        guard let rec = recorder, rec.isRecording else { return 0 }
+        rec.updateMeters()
+        let db = rec.averagePower(forChannel: 0)
+        let normalized = (Double(db) + 50) / 45          // −50 дБ → 0, −5 дБ → 1
+        return CGFloat(min(max(normalized, 0), 1))
+    }
 
     // MARK: - Сторож молчащего устройства
 
