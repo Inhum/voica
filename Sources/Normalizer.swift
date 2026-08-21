@@ -92,6 +92,11 @@ enum Normalizer {
             }
         }
         strays.formUnion(openIdx)                         // открыли и не закрыли
+        // Прямая кавычка не различает открывающую и закрывающую, поэтому просто считаем их:
+        // нечётное количество означает лишнюю. Живой случай — движок открыл ёлочкой, а закрыл
+        // прямой: «Ну попробуй\" — убрав непарную ёлочку, прямую нельзя оставлять висеть.
+        let straight = text.enumerated().filter { $0.element == "\"" }.map(\.offset)
+        if straight.count % 2 == 1, let last = straight.last { strays.insert(last) }
         guard !strays.isEmpty else { return text }
         return String(text.enumerated().filter { !strays.contains($0.offset) }.map(\.element))
     }
@@ -110,13 +115,17 @@ enum Normalizer {
     }
 
     /// Свёрнутые формы, которые целиком являются мусором и удаляются даже без растяжки.
-    private static let fillerWords: Set<String> = ["хм", "эм", "мхм", "угу", "ага"]
+    private static let fillerWords: Set<String> = ["хм", "мхм", "угу", "ага", "э"]   // «эм» НЕ филлер: так движок пишет «GigaAM» — «Джига Эм»
     /// Растянутые НАСТОЯЩИЕ слова, которые надо распрямить, а не удалить. Список явный:
     /// распрямлять всё подряд нельзя — «PPC» стало бы «Pc», «All» → «Al», «ноо» → «но».
     private static let stretchable: Set<String> = ["ну", "но", "да", "нет", "вот", "так"]
     /// Одиночные звуки — только если их ТЯНУЛИ. Само по себе «а» это союз, «у» и «о» —
     /// предлоги, «и» — союз; трогать их нельзя ни при каких условиях.
-    private static let fillerSounds: Set<String> = ["э", "а", "ы", "у", "м", "о", "и"]
+    ///
+    /// ⚠️ «и» тут НЕТ намеренно. Движок пишет аббревиатуру «ИИ» и строчными — «ии», — а она
+    /// сворачивается в «и» и удалялась бы как растянутый звук. Живой случай: «Проверка ии.»
+    /// превращалось в «Проверка». Растянутое «и-и-и» встречается редко, аббревиатура — часто.
+    private static let fillerSounds: Set<String> = ["э", "а", "ы", "у", "м", "о"]
 
     /// Убирает слова-паразиты, оставшиеся от растянутых звуков.
     ///
@@ -147,7 +156,10 @@ enum Normalizer {
             let shrank = col.count < word.count
             // «5 мм» — это миллиметры, а не мычание. Число слева снимает подозрение.
             let afterNumber = prevWord.contains { $0.isNumber }
-            let isFiller = !afterNumber && col.count <= 2 && word.count >= 2
+            // Требование длины нужно только растянутым звукам, и оно уже зашито в `shrank`:
+            // свернувшееся слово по определению было длиннее. Безусловным филлерам («э», «хм»)
+            // длина не нужна — одиночное «э» такой же мусор, как «э-э-э».
+            let isFiller = !afterNumber && col.count <= 2
                 && (fillerWords.contains(col) || (shrank && fillerSounds.contains(col)))
 
             if isFiller {
@@ -172,13 +184,32 @@ enum Normalizer {
             word = ""; sep = ""
         }
 
-        for ch in text {
-            if ch.isLetter || ch.isNumber || ch == "-" { word.append(ch) }
-            else { flush(); if dropped { continue }; sep += String(ch) }
+        // При удалении филлера остаются ДВА разделителя — до него и после. Оставить надо
+        // один, и именно тот, что несёт пунктуацию: «Ну, эээ, дальше» → «Ну, дальше», но
+        // «Проверка ии. Сто» → «Проверка. Сто», а не «Проверка Сто» со склейкой предложений.
+        var sepAfter = ""
+        func pickSeparator() {
+            // Приоритет у разделителя ДО филлера: там стоит конец предложения, а после
+            // филлера обычно запятая, которой он был отделён. Иначе «Почему? А-а, как бы»
+            // теряло вопросительный знак, превращаясь в «Почему, как бы».
+            let hasPunct = { (t: String) in t.contains { $0.isPunctuation } }
+            if !hasPunct(sep) && hasPunct(sepAfter) { sep = sepAfter }
+            sepAfter = ""
+            dropped = false
         }
+        for ch in text {
+            if ch.isLetter || ch.isNumber || ch == "-" {
+                if dropped { pickSeparator() }
+                word.append(ch)
+            } else {
+                flush()
+                if dropped { sepAfter.append(ch) } else { sep.append(ch) }
+            }
+        }
+        if dropped { pickSeparator() }
         flush()
         // Хвостовые знаки после последнего слова: без этого терялась точка в конце фразы.
-        if !dropped { out += sep }
+        out += sep
         // Уборка чинит следы удаления — повисшие запятые и сдвоенные пробелы. Если ничего не
         // удаляли, запускать её нельзя: она переформатировала бы чужую пунктуацию, например
         // склеивала «контрагентов. ..» в «контрагентов...», чего никто не просил.
@@ -197,7 +228,7 @@ enum Normalizer {
         // Только следы удаления: сдвоенные пробелы и знак, оставшийся в начале строки.
         // Пунктуацию в остальном тексте НЕ трогаем — разделитель после филлера пропускается
         // при разборе, поэтому повисших запятых не остаётся, а чужие многоточия не наше дело.
-        for (pattern, replacement) in [("[ \t]{2,}", " "), ("^[\\s,;:]+", "")] {
+        for (pattern, replacement) in [("[ \t]{2,}", " "), ("^[\\s,;:.!?…]+", "")] {
             t = t.replacingOccurrences(of: pattern, with: replacement, options: .regularExpression)
         }
         return t.trimmingCharacters(in: .whitespacesAndNewlines)

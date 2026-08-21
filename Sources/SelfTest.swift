@@ -391,6 +391,37 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
+        // Живые дефекты, пойманные проверкой пользователя 2026-08-21.
+        // Движок пишет аббревиатуру строчными — её нельзя принимать за растянутый звук.
+        check("filler keeps lowercase ии",
+              Normalizer.stripFillers("Проверка ии. Сто процентов")
+              == "Проверка ии. Сто процентов")
+        // Точка после филлера принадлежит предложению, а не филлеру: иначе фразы слипаются.
+        check("filler keeps sentence period",
+              Normalizer.stripFillers("Проверка ммм. Сто процентов") == "Проверка. Сто процентов")
+        // А запятая вокруг филлера дублируется — лишнюю убираем.
+        check("filler drops duplicate comma",
+              Normalizer.stripFillers("Ну, эээ, дальше") == "Ну, дальше")
+        // Одиночное «э» — всегда мусор: союзом или предлогом оно, в отличие от «а», не бывает.
+        check("filler removes bare э", Normalizer.stripFillers("Э это, короче") == "это, короче")
+        check("filler drops leading punctuation",
+              Normalizer.stripFillers("-э-э. Проверка слов") == "Проверка слов")
+        // Прямая кавычка, оставшаяся без пары после вычистки ёлочки.
+        check("quotes drop orphan straight quote",
+              Normalizer.balanceQuotes("он сказал: «Ну попробуй\".") == "он сказал: Ну попробуй.")
+        check("quotes keep paired straight quotes",
+              Normalizer.balanceQuotes("он сказал \"да\" мне") == "он сказал \"да\" мне")
+
+        // Ещё два дефекта, пойманных прогоном по истории 2026-08-21.
+        // «Эм» — не филлер: так движок пишет GigaAM.
+        check("filler keeps Эм in a name",
+              Normalizer.stripFillers("это \"Джига Эм\" такой") == "это \"Джига Эм\" такой")
+        // Знак конца предложения стоит ДО филлера — его и надо сохранить.
+        check("filler keeps question mark before",
+              Normalizer.stripFillers("Почему? А-а, как бы") == "Почему? как бы")
+        check("filler keeps period before",
+              Normalizer.stripFillers("ставил. Хмм, внедряли") == "ставил. внедряли")
+
         // Непарные кавычки (§6.4). Живой случай: GigaAM открыла ёлочку и не закрыла.
         check("quotes drop unclosed opening",
               Normalizer.balanceQuotes("с термином «DeepSeek в словаре.")
