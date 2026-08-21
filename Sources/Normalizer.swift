@@ -71,34 +71,75 @@ enum Normalizer {
 
     // MARK: - Непарные кавычки
 
-    /// Убирает кавычки, оставшиеся без пары.
+    /// Приводит кавычки в порядок: прямые заменяет ёлочками по положению, непарные убирает.
     ///
-    /// Наследить может кто угодно, поэтому проверка стоит последней, после обоих механизмов.
-    /// GigaAM: декод жадный, по кадрам, без памяти о том, что кавычка уже открыта (§2.5) —
-    /// незакрытая ёлочка для CTC не сбой, а нормальный исход. LLM: подставляя латинский термин
-    /// в русский текст, любит обернуть его в кавычки вопреки запрету в промпте, и делает это
-    /// несимметрично.
+    /// Движок пишет кавычки как придётся — в его словаре есть и `«`, и `»`, и `"`, и он
+    /// предсказывает каждую отдельно, без памяти о том, что уже открыл (§2.5). Живой пример:
+    /// `в ответ:"Давай … неделе". Я сказал: «Да", это … вариант".` — три вида вперемешку.
     ///
-    /// Парные не трогаем: считаем открытые и закрытые, удаляем только те, которым не нашлось
-    /// пары. Вложенность нас не заботит — в диктовке её не бывает.
+    /// Стоит последней, в единственной точке выдачи, ПОСЛЕ обоих механизмов (§6.2 и §6.1):
+    /// наследить может и движок, и модель, а виноватого не определить.
     static func balanceQuotes(_ text: String) -> String {
-        var openIdx: [Int] = []          // позиции открывающих, ждущих закрытия
+        let chars = Array(smartQuotes(text))
+        var openIdx: [Int] = [], matched: [Int] = [], unmatched: [Int] = []
         var strays = Set<Int>()
-        for (i, ch) in text.enumerated() {
+        for (i, ch) in chars.enumerated() {
             if ch == "«" { openIdx.append(i) }
             else if ch == "»" {
-                if openIdx.isEmpty { strays.insert(i) }   // закрыли то, что не открывали
-                else { openIdx.removeLast() }
+                if openIdx.isEmpty { unmatched.append(i) }    // закрыли то, что не открывали
+                else { openIdx.removeLast(); matched.append(i) }
             }
         }
-        strays.formUnion(openIdx)                         // открыли и не закрыли
-        // Прямая кавычка не различает открывающую и закрывающую, поэтому просто считаем их:
-        // нечётное количество означает лишнюю. Живой случай — движок открыл ёлочкой, а закрыл
-        // прямой: «Ну попробуй\" — убрав непарную ёлочку, прямую нельзя оставлять висеть.
-        let straight = text.enumerated().filter { $0.element == "\"" }.map(\.offset)
-        if straight.count % 2 == 1, let last = straight.last { strays.insert(last) }
-        guard !strays.isEmpty else { return text }
-        return String(text.enumerated().filter { !strays.contains($0.offset) }.map(\.element))
+        // На каждую лишнюю закрывающую надо что-то выбросить, и выбор неочевиден. Если какая-то
+        // из УЖЕ СПАРЕННЫХ закрывающих выглядит преждевременной — за ней запятая и продолжение
+        // со строчной, — выбрасываем её: значит цитата на самом деле длиннее, а лишняя закрывает
+        // её по-настоящему. Живой случай: «Да", это стопроцентный вариант" — человек закавычил
+        // всю фразу, движок закрыл после первого слова; правильный ответ «Да, это … вариант».
+        // Если преждевременных нет, лишняя и есть ошибка — выбрасываем её саму. Иначе фраза
+        // «Он сказал «да». Потом ушёл»» потеряла бы верную закрывающую после «да».
+        for extra in unmatched {
+            if let premature = matched.first(where: { isPremature(chars, at: $0) && !strays.contains($0) }) {
+                strays.insert(premature)
+            } else {
+                strays.insert(extra)
+            }
+        }
+        strays.formUnion(openIdx)                             // открыли и не закрыли
+        guard !strays.isEmpty else { return String(chars) }
+        return String(chars.enumerated().filter { !strays.contains($0.offset) }.map(\.element))
+    }
+
+    /// Закрывающая кавычка выглядит преждевременной: за ней запятая и продолжение со строчной,
+    /// то есть фраза не кончилась и цитата, скорее всего, тоже.
+    private static func isPremature(_ chars: [Character], at i: Int) -> Bool {
+        var j = i + 1
+        guard j < chars.count, chars[j] == "," else { return false }
+        j += 1
+        while j < chars.count, chars[j] == " " { j += 1 }
+        guard j < chars.count else { return false }
+        return chars[j].isLowercase
+    }
+
+    /// Прямая кавычка `"` не различает открывающую и закрывающую, поэтому определяем по
+    /// соседям — как это делают текстовые редакторы: после пробела или двоеточия и перед
+    /// буквой это открывающая, после буквы или знака — закрывающая.
+    static func smartQuotes(_ text: String) -> String {
+        // Ёлочки — русская типографика. В английском тексте прямые кавычки правильны, и
+        // трогать их нельзя: диктовка бывает и на английском (§2 — авто-детект языка).
+        guard text.lowercased().contains(where: { translit[$0] != nil }) else { return text }
+        let chars = Array(text)
+        var out = ""
+        for (i, ch) in chars.enumerated() {
+            guard ch == "\"" else { out.append(ch); continue }
+            let before = i > 0 ? chars[i - 1] : " "
+            let after = i + 1 < chars.count ? chars[i + 1] : " "
+            let opening = (before == " " || before == ":" || before == "(" || before == "\n")
+                && (after.isLetter || after.isNumber)
+            // Движок часто забывает пробел после двоеточия перед цитатой: `в ответ:"Давай`.
+            if opening, before == ":" { out.append(" ") }
+            out.append(opening ? "«" : "»")
+        }
+        return out
     }
 
     // MARK: - Филлеры («э-э-э», «ммм», «хмм»)

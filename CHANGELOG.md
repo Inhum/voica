@@ -15,7 +15,14 @@ All notable changes to this project are documented here. The format is based on
   since throwing it away would lose meaning. Ordinary speech is left alone — single "а", "и",
   "у" and "о" are conjunctions and prepositions, numbers and all-caps abbreviations are never
   touched.
-- **A quote left without its pair is removed.** Both the recogniser and the language model can
+- **Quotes are tidied up.** The recogniser writes them however it happens to: guillemets and
+  straight quotes turn up in the same sentence, one side of a pair goes missing, and the space
+  after a colon disappears. Straight quotes now become proper Russian guillemets based on where
+  they sit (English text is left alone), the missing space is restored, and a quote left without
+  its pair is removed. When a closing quote is missing, which one to drop depends on meaning:
+  "Да", это стопроцентный вариант" was one phrase in quotes, not one word, so the early closing
+  goes and you get «Да, это стопроцентный вариант». A closing followed by a full stop is a real
+  one and stays put. Both the recogniser and the language model can
   leave one behind — the local engine decodes frame by frame with no memory that a quote is
   already open, and the model likes to wrap a substituted term in quotes despite being told not
   to, often on one side only. Since there is no telling which of them did it, the check runs last,

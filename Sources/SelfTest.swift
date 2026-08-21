@@ -407,10 +407,27 @@ enum SelfTest {
         check("filler drops leading punctuation",
               Normalizer.stripFillers("-э-э. Проверка слов") == "Проверка слов")
         // Прямая кавычка, оставшаяся без пары после вычистки ёлочки.
-        check("quotes drop orphan straight quote",
-              Normalizer.balanceQuotes("он сказал: «Ну попробуй\".") == "он сказал: Ну попробуй.")
-        check("quotes keep paired straight quotes",
-              Normalizer.balanceQuotes("он сказал \"да\" мне") == "он сказал \"да\" мне")
+        // Прямые кавычки становятся ёлочками по положению — и разнобой сам собой чинится:
+        // движок открыл ёлочкой, закрыл прямой, теперь это нормальная пара.
+        check("quotes fix mixed pair",
+              Normalizer.balanceQuotes("он сказал: «Ну попробуй\".") == "он сказал: «Ну попробуй».")
+        check("quotes convert straight to guillemets",
+              Normalizer.balanceQuotes("он сказал \"да\" мне") == "он сказал «да» мне")
+        // Живой случай: движок закрыл цитату после первого слова, хотя закавычена вся фраза.
+        // Лишняя закрывающая — ПРЕЖДЕВРЕМЕННАЯ (за ней запятая и строчная), её и выбрасываем.
+        check("quotes drop premature closing",
+              Normalizer.balanceQuotes("Я сказал: «Да\", это стопроцентный вариант\".")
+              == "Я сказал: «Да, это стопроцентный вариант».")
+        // А настоящую закрывающую (за ней конец предложения) трогать нельзя — уходит последняя.
+        check("quotes keep genuine closing",
+              Normalizer.balanceQuotes("Он сказал «да». Потом ушёл».")
+              == "Он сказал «да». Потом ушёл.")
+        // В английском тексте прямые кавычки правильны — не трогаем.
+        check("quotes keep english straight",
+              Normalizer.balanceQuotes("he said \"yes\" to me") == "he said \"yes\" to me")
+        // Пробел после двоеточия, забытый движком.
+        check("quotes add space after colon",
+              Normalizer.balanceQuotes("в ответ:\"Давай\".") == "в ответ: «Давай».")
 
         // Ещё два дефекта, пойманных прогоном по истории 2026-08-21.
         // «Эм» — не филлер: так движок пишет GigaAM.
