@@ -375,6 +375,14 @@ enum SelfTest {
         check("normalizer fixes Dппсих",
               Normalizer.fixTerms("Поставил Dппсих, проверка", vocabulary: vocab)
               == "Поставил DeepSeek, проверка")
+        // ⚠️ Кусок из одних пробелов: непустой, но слов в нём ноль. Без защиты запасной поиск
+        // нахлёста уходил в `1...0` — в Swift это trap, падение приложения, а не исключение.
+        check("stitch survives whitespace-only chunk",
+              LocalSTT.stitch(" ", "проверка связи такая") == " проверка связи такая"
+              || LocalSTT.stitch(" ", "проверка связи такая") == "проверка связи такая")
+        check("stitch survives whitespace-only second chunk",
+              !LocalSTT.stitch("проверка связи такая", " ").isEmpty)
+
         check("normalizer keeps lookalike latin word",
               Normalizer.fixTerms("это Greek текст", vocabulary: vocab) == "это Greek текст")
         // ⚠️ «Greek» держит НЕ порог, а костяк: `c` сворачивается в `k`, `q` — нет.

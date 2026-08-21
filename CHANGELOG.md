@@ -20,6 +20,12 @@ All notable changes to this project are documented here. The format is based on
   meaning unlike mumbling, and a dictation consisting of a single "Ага." would have come out
   empty. The list now holds only what it can actually remove.
 
+- **A chunk with no words could crash the local engine.** A string of spaces is not empty but
+  splits into zero words, and the fallback overlap search then walked a range from one to zero —
+  in Swift that is a trap, not an exception, so the app would have gone down rather than
+  recovered. The decoder trims its output today, which is why nobody ever hit it; the guard now
+  sits where the break happens instead of where luck holds.
+
 ### Changed
 - **Terms written in plain Latin are matched a little more freely** — letter similarity of 0.5
   instead of 0.6, on top of the exact consonant skeleton that was always required. A live miss
