@@ -69,6 +69,113 @@ enum Normalizer {
         !sep.isEmpty && sep.allSatisfy { $0 == " " || $0 == "-" || $0 == "\u{2011}" }
     }
 
+    // MARK: - Филлеры («э-э-э», «ммм», «хмм»)
+
+    /// Схлопывает дефисы и подряд идущие одинаковые буквы: «Э-э-э» → «э», «Ну-у-у» → «ну».
+    /// Тянущийся звук распознавание пишет по-разному от раза к разу, поэтому сравнивать
+    /// надо именно свёрнутую форму, а не перечислять написания.
+    static func collapsed(_ word: String) -> String {
+        var out = ""
+        for ch in word.lowercased() where ch != "-" && ch != "\u{2011}" {
+            if out.last != ch { out.append(ch) }
+        }
+        return out
+    }
+
+    /// Свёрнутые формы, которые целиком являются мусором и удаляются даже без растяжки.
+    private static let fillerWords: Set<String> = ["хм", "эм", "мхм", "угу", "ага"]
+    /// Растянутые НАСТОЯЩИЕ слова, которые надо распрямить, а не удалить. Список явный:
+    /// распрямлять всё подряд нельзя — «PPC» стало бы «Pc», «All» → «Al», «ноо» → «но».
+    private static let stretchable: Set<String> = ["ну", "но", "да", "нет", "вот", "так"]
+    /// Одиночные звуки — только если их ТЯНУЛИ. Само по себе «а» это союз, «у» и «о» —
+    /// предлоги, «и» — союз; трогать их нельзя ни при каких условиях.
+    private static let fillerSounds: Set<String> = ["э", "а", "ы", "у", "м", "о", "и"]
+
+    /// Убирает слова-паразиты, оставшиеся от растянутых звуков.
+    ///
+    /// Правило смотрит не на список написаний, а на форму слова: кандидат — токен, который
+    /// после схлопывания повторов ужимается до одной-двух букв («эээ» → «э», «хмм» → «хм»).
+    /// Обычные слова так не ужимаются: «мама» остаётся «мама», «коммуникации» — «комуникации»,
+    /// то есть длина остаётся большой, и под правило они не попадают.
+    ///
+    /// ⚠️ Растянутое НАСТОЯЩЕЕ слово не удаляется, а распрямляется: «Ну-у-у» → «Ну».
+    /// Удалить его было бы потерей смысла, а оставить как есть — мусором в тексте.
+    static func stripFillers(_ text: String) -> String {
+        var out = ""
+        var word = "", sep = ""
+        var prevWord = ""
+        var dropped = false
+        var didDrop = false        // хоть один филлер убрали — только тогда нужна уборка
+
+        func flush() {
+            guard !word.isEmpty else { return }
+            // Цифры не трогаем вовсе: схлопывание повторов превращало «100» в «10».
+            // Аббревиатуры из заглавных — тоже: «ИИ» сворачивалось в «и» и удалялось как филлер.
+            let untouchable = word.contains { $0.isNumber }
+                || (word.count >= 2 && word.allSatisfy { !$0.isLetter || $0.isUppercase })
+            guard !untouchable else {
+                out += sep + word; prevWord = word; word = ""; sep = ""; dropped = false; return
+            }
+            let col = collapsed(word)
+            let shrank = col.count < word.count
+            // «5 мм» — это миллиметры, а не мычание. Число слева снимает подозрение.
+            let afterNumber = prevWord.contains { $0.isNumber }
+            let isFiller = !afterNumber && col.count <= 2 && word.count >= 2
+                && (fillerWords.contains(col) || (shrank && fillerSounds.contains(col)))
+
+            if isFiller {
+                // Разделитель ПЕРЕД филлером сохраняем и отдаём следующему слову, а тот, что
+                // идёт после, пропускаем в цикле. Иначе съедаются оба и слова слипаются:
+                // «проверка хмм всяких» давало «проверкався ких».
+                dropped = true
+                didDrop = true
+                word = ""
+                return
+            } else {
+                // Растянутое настоящее слово распрямляем, регистр первой буквы сохраняем.
+                // ⚠️ Распрямлять можно ТОЛЬКО короткие формы. Без ограничения на длину
+                // схлопывание съедало бы двойные буквы в обычных словах: «коммуникации»
+                // превратились бы в «комуникации».
+                let stretched = shrank && stretchable.contains(col)
+                let fixed = stretched ? restoreCase(col, like: word) : word
+                out += sep + fixed
+                prevWord = word
+                dropped = false
+            }
+            word = ""; sep = ""
+        }
+
+        for ch in text {
+            if ch.isLetter || ch.isNumber || ch == "-" { word.append(ch) }
+            else { flush(); if dropped { continue }; sep += String(ch) }
+        }
+        flush()
+        // Хвостовые знаки после последнего слова: без этого терялась точка в конце фразы.
+        if !dropped { out += sep }
+        // Уборка чинит следы удаления — повисшие запятые и сдвоенные пробелы. Если ничего не
+        // удаляли, запускать её нельзя: она переформатировала бы чужую пунктуацию, например
+        // склеивала «контрагентов. ..» в «контрагентов...», чего никто не просил.
+        return didDrop ? tidy(out) : out
+    }
+
+    private static func restoreCase(_ s: String, like original: String) -> String {
+        guard let first = original.first, first.isUppercase else { return s }
+        return s.prefix(1).uppercased() + s.dropFirst()
+    }
+
+    /// Уборка после удаления: сдвоенные пробелы, повисшие и слипшиеся знаки, заглавная
+    /// после точки. Без неё «Ну, эээ, дальше» дало бы «Ну, , дальше» — заметно хуже исходного.
+    private static func tidy(_ s: String) -> String {
+        var t = s
+        // Только следы удаления: сдвоенные пробелы и знак, оставшийся в начале строки.
+        // Пунктуацию в остальном тексте НЕ трогаем — разделитель после филлера пропускается
+        // при разборе, поэтому повисших запятых не остаётся, а чужие многоточия не наше дело.
+        for (pattern, replacement) in [("[ \t]{2,}", " "), ("^[\\s,;:]+", "")] {
+            t = t.replacingOccurrences(of: pattern, with: replacement, options: .regularExpression)
+        }
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     static func fixTerms(_ text: String, vocabulary: String) -> String {
         let terms = vocabulary.split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }

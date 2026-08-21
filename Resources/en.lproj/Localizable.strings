@@ -108,6 +108,9 @@
 "settings.stt.language.auto" = "Auto-detect";
 "settings.stt.language.ru" = "Russian";
 "settings.stt.language.en" = "English";
+"settings.fillers.header" = "Filler sounds";
+"settings.fillers.toggle" = "Remove \"uh\", \"um\", \"hmm\"";
+"settings.fillers.hint" = "Drawn-out sounds that mean nothing in speech but clutter the text. Removed by rules, no network needed. Real words that were merely drawn out are straightened rather than dropped. Turn this off if you transcribe speech verbatim.";
 "settings.stt.hint" = "Applies to the cloud engine only. Turbo is faster; Large v3 can be a touch more accurate. Auto-detect handles around a hundred languages; forcing ru or en only helps short phrases it gets wrong. The local engine (GigaAM) is Russian-only and ignores these.";
 "settings.vocab.header" = "Vocabulary";
 "settings.vocab.hint" = "Terms speech recognition often mishears — names, jargon, anglicisms. E.g.: Kubernetes, kubectl, Groq, ЕИС, оферта. Voica pulls garbled spellings back to the ones listed here by rule — no key, no internet, both engines. The cloud engine also gets the list as a hint during recognition (not a strict rule); the local engine can't take one.";

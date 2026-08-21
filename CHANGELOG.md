@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format is based on
 
 ## [0.9.17] — 2026-08-20 — The capsule now shows what the microphone hears
 
+### Added
+- **Filler sounds can be stripped from the text** — the drawn-out "uh", "um" and "hmm" that mean
+  nothing in speech but clutter the page. On by default; there is a checkbox in Settings →
+  Dictation, because removing them is removing something you actually said, and anyone
+  transcribing speech verbatim will want it off. Works by rules, offline, on both engines.
+  A word that was merely drawn out is straightened rather than dropped: "ну-у-у" becomes "ну",
+  since throwing it away would lose meaning. Ordinary speech is left alone — single "а", "и",
+  "у" and "о" are conjunctions and prepositions, numbers and all-caps abbreviations are never
+  touched.
+
 ### Changed
 - **The wave in the recording capsule follows your actual voice** instead of running the same
   animation regardless. This is not decoration: with a fixed animation, a microphone held by

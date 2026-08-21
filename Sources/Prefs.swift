@@ -21,6 +21,7 @@ enum Prefs {
         static let sttModel      = "sttModel"        // облачная модель распознавания (whisper-*)
         static let sttLanguage   = "sttLanguage"     // "auto" | ISO-639-1 (ru/en/…) — только облако
         static let recordingHUD  = "recordingHUD"    // показывать плашку записи (иначе — пульс иконки)
+        static let stripFillers  = "stripFillers"    // убирать «э-э-э», «ммм», «хмм» из текста
         static let toggleDoubleTap = "toggleDoubleTap" // Toggle: старт двойным тапом (иначе одиночным)
     }
 
@@ -138,6 +139,13 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.recordingHUD) }
     }
 
+    /// Убирать слова-паразиты. По умолчанию ВКЛ: в диктовке они не нужны почти никогда.
+    /// Настройка всё же есть — тому, кто расшифровывает интервью дословно, удаление навредит.
+    static var stripFillers: Bool {
+        get { d.object(forKey: Key.stripFillers) == nil ? true : d.bool(forKey: Key.stripFillers) }
+        set { d.set(newValue, forKey: Key.stripFillers) }
+    }
+
     /// В режиме Toggle стартовать запись двойным тапом (одиночный — стоп). По умолчанию да —
     /// защита от случайного старта. Если выкл — старт одиночным тапом (как было).
     static var toggleDoubleTap: Bool {
@@ -150,7 +158,7 @@ enum Prefs {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
          Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess, Key.sttEngine,
          Key.chatModel, Key.resolvedChatModel, Key.sttModel, Key.sttLanguage,
-         Key.recordingHUD, Key.toggleDoubleTap]
+         Key.recordingHUD, Key.toggleDoubleTap, Key.stripFillers]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

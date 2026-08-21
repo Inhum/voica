@@ -391,6 +391,25 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
+        // Филлеры (§6.2). Формы взяты из настоящих диктовок пользователя.
+        check("filler removes stretched э", Normalizer.stripFillers("Э-э-э, проверка") == "проверка")
+        check("filler removes хмм", Normalizer.stripFillers("проверка хмм всяких слов")
+              == "проверка всяких слов")
+        check("filler removes ммм", Normalizer.stripFillers("ммм ну ладно") == "ну ладно")
+        check("filler removes А-а", Normalizer.stripFillers("А-а, как бы почему") == "как бы почему")
+        // Растянутое НАСТОЯЩЕЕ слово распрямляется, а не удаляется.
+        check("filler straightens Ну-у-у", Normalizer.stripFillers("Ну-у-у, там я работал")
+              == "Ну, там я работал")
+        // Отрицательные — важнее положительных.
+        check("filler keeps bare а", Normalizer.stripFillers("А я пошёл") == "А я пошёл")
+        check("filler keeps prepositions", Normalizer.stripFillers("у меня и он") == "у меня и он")
+        check("filler keeps millimetres", Normalizer.stripFillers("отступ 5 мм ровно")
+              == "отступ 5 мм ровно")
+        check("filler keeps doubled letters",
+              Normalizer.stripFillers("коммуникации и коммерция") == "коммуникации и коммерция")
+        check("filler keeps ordinary words", Normalizer.stripFillers("мама мыла раму")
+              == "мама мыла раму")
+
         // Вычистка рассуждений reasoning-моделей (§6.1). Баг с qwen/qwen3.6-27b:
         // ход мысли приезжал в текст пользователя вместо диктовки.
         check("strip think block",

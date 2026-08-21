@@ -371,7 +371,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // §6: детерминированная нормализация — правилами, до ИИ-правки и независимо от неё.
         // Работает на обоих движках, без ключа и без сети. Для локального движка это вообще
         // единственный бесплатный путь: словарь-подсказка `prompt` — фича облачного Whisper.
-        let t = Transcription(text: Normalizer.fixTerms(raw.text, vocabulary: Prefs.vocabulary),
+        var cleaned = raw.text
+        if Prefs.stripFillers { cleaned = Normalizer.stripFillers(cleaned) }
+        let t = Transcription(text: Normalizer.fixTerms(cleaned, vocabulary: Prefs.vocabulary),
                               language: raw.language, duration: raw.duration)
         if t.text.isEmpty {
             state = .idle
@@ -635,7 +637,10 @@ if let i = CommandLine.arguments.firstIndex(of: "--normalize-corpus"),
     let lines = body.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
     var changed = 0
     for line in lines {
-        let after = Normalizer.fixTerms(line, vocabulary: Prefs.vocabulary)
+        // Тот же порядок, что в диктовке: сперва филлеры, потом термины.
+        var after = line
+        if Prefs.stripFillers { after = Normalizer.stripFillers(after) }
+        after = Normalizer.fixTerms(after, vocabulary: Prefs.vocabulary)
         if after != line {
             changed += 1
             print("— \(line)\n+ \(after)\n")

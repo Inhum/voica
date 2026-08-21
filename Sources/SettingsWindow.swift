@@ -39,6 +39,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var sttLanguagePopup: NSPopUpButton!
     private var recordingHUDToggle: NSButton!
     private var doubleTapToggle: NSButton!
+    private var fillersToggle: NSButton!
 
     // Vocabulary
     private var vocabTextView: NSTextView!
@@ -287,6 +288,12 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         stack.addArrangedSubview(labeledRow(L("settings.stt.language"), sttLanguagePopup))
 
         stack.addArrangedSubview(makeHint(L("settings.stt.hint")))
+
+        stack.addArrangedSubview(header(L("settings.fillers.header")))
+        fillersToggle = NSButton(checkboxWithTitle: L("settings.fillers.toggle"),
+                                 target: self, action: #selector(fillersChanged))
+        stack.addArrangedSubview(fillersToggle)
+        stack.addArrangedSubview(makeHint(L("settings.fillers.hint")))
 
         return container
     }
@@ -638,6 +645,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         selectByRepresented(sttLanguagePopup, Prefs.sttLanguage)
         recordingHUDToggle.state = Prefs.recordingHUD ? .on : .off
         doubleTapToggle.state = Prefs.toggleDoubleTap ? .on : .off
+        fillersToggle.state = Prefs.stripFillers ? .on : .off
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
@@ -764,6 +772,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func recordingHUDChanged() {
         Prefs.recordingHUD = (recordingHUDToggle.state == .on)
+    }
+
+    @objc private func fillersChanged() {
+        Prefs.stripFillers = (fillersToggle.state == .on)
     }
 
     @objc private func doubleTapChanged() {
