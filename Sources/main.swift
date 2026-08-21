@@ -454,9 +454,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// `raw` — текст движка ДО любой нашей обработки (и правил §6.2, и ИИ §6.1).
     /// В историю он попадает, только когда реально отличается от доставленного (§7):
     /// две одинаковые копии не нужны, а каждая пара «raw → text» — готовый случай для разбора.
-    private func deliver(text: String, transcription t: Transcription,
+    private func deliver(text rawText: String, transcription t: Transcription,
                          rec: (url: URL, duration: TimeInterval), model: String,
                          raw: String? = nil) {
+        // Последняя проверка перед выдачей (§6.4): непарную кавычку мог оставить и движок,
+        // и модель, поэтому чистим здесь — после обоих, в единственной точке выдачи.
+        let text = Normalizer.balanceQuotes(rawText)
         state = .idle
         Store.shared.insert(text: text, language: t.language,
                             duration: t.duration ?? rec.duration,
@@ -641,6 +644,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--normalize-corpus"),
         var after = line
         if Prefs.stripFillers { after = Normalizer.stripFillers(after) }
         after = Normalizer.fixTerms(after, vocabulary: Prefs.vocabulary)
+        after = Normalizer.balanceQuotes(after)   // как в выдаче: проверка идёт последней
         if after != line {
             changed += 1
             print("— \(line)\n+ \(after)\n")

@@ -15,6 +15,11 @@ All notable changes to this project are documented here. The format is based on
   since throwing it away would lose meaning. Ordinary speech is left alone — single "а", "и",
   "у" and "о" are conjunctions and prepositions, numbers and all-caps abbreviations are never
   touched.
+- **A quote left without its pair is removed.** Both the recogniser and the language model can
+  leave one behind — the local engine decodes frame by frame with no memory that a quote is
+  already open, and the model likes to wrap a substituted term in quotes despite being told not
+  to, often on one side only. Since there is no telling which of them did it, the check runs last,
+  after both. Matched pairs are left alone.
 
 ### Changed
 - **The wave in the recording capsule follows your actual voice** instead of running the same

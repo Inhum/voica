@@ -391,6 +391,19 @@ enum SelfTest {
         } else {
             check("postprocess prompt has vocab", false)
         }
+        // Непарные кавычки (§6.4). Живой случай: GigaAM открыла ёлочку и не закрыла.
+        check("quotes drop unclosed opening",
+              Normalizer.balanceQuotes("с термином «DeepSeek в словаре.")
+              == "с термином DeepSeek в словаре.")
+        check("quotes drop orphan closing",
+              Normalizer.balanceQuotes("текст» хвост") == "текст хвост")
+        check("quotes keep balanced pair",
+              Normalizer.balanceQuotes("он сказал «подожди» и ушёл") == "он сказал «подожди» и ушёл")
+        check("quotes keep two pairs",
+              Normalizer.balanceQuotes("«раз» и «два»") == "«раз» и «два»")
+        check("quotes untouched without any",
+              Normalizer.balanceQuotes("обычный текст") == "обычный текст")
+
         // Филлеры (§6.2). Формы взяты из настоящих диктовок пользователя.
         check("filler removes stretched э", Normalizer.stripFillers("Э-э-э, проверка") == "проверка")
         check("filler removes хмм", Normalizer.stripFillers("проверка хмм всяких слов")
