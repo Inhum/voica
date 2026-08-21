@@ -22,6 +22,8 @@ enum Prefs {
         static let sttLanguage   = "sttLanguage"     // "auto" | ISO-639-1 (ru/en/…) — только облако
         static let recordingHUD  = "recordingHUD"    // показывать плашку записи (иначе — пульс иконки)
         static let stripFillers  = "stripFillers"    // убирать «э-э-э», «ммм», «хмм» из текста
+        static let fixQuotes     = "fixQuotes"       // чинить кавычки (ёлочки, непарные)
+        static let fixTermsByRules = "fixTermsByRules" // исправлять термины правилами (§6.2)
         static let toggleDoubleTap = "toggleDoubleTap" // Toggle: старт двойным тапом (иначе одиночным)
     }
 
@@ -146,6 +148,22 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.stripFillers) }
     }
 
+    /// Чинить кавычки: прямые → ёлочки, непарные убрать (§6.4). По умолчанию ВКЛ.
+    /// Выключатель нужен на случай, если правило начнёт ошибаться: без него единственным
+    /// способом его унять было бы обновление приложения.
+    static var fixQuotes: Bool {
+        get { d.object(forKey: Key.fixQuotes) == nil ? true : d.bool(forKey: Key.fixQuotes) }
+        set { d.set(newValue, forKey: Key.fixQuotes) }
+    }
+
+    /// Исправлять термины из словаря правилами (§6.2). По умолчанию ВКЛ — это единственный
+    /// механизм терминов, работающий без ключа и сети. Выключатель по той же причине, что
+    /// у кавычек: правило подменяет слова, и должен быть способ его остановить.
+    static var fixTermsByRules: Bool {
+        get { d.object(forKey: Key.fixTermsByRules) == nil ? true : d.bool(forKey: Key.fixTermsByRules) }
+        set { d.set(newValue, forKey: Key.fixTermsByRules) }
+    }
+
     /// В режиме Toggle стартовать запись двойным тапом (одиночный — стоп). По умолчанию да —
     /// защита от случайного старта. Если выкл — старт одиночным тапом (как было).
     static var toggleDoubleTap: Bool {
@@ -158,7 +176,8 @@ enum Prefs {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
          Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess, Key.sttEngine,
          Key.chatModel, Key.resolvedChatModel, Key.sttModel, Key.sttLanguage,
-         Key.recordingHUD, Key.toggleDoubleTap, Key.stripFillers]
+         Key.recordingHUD, Key.toggleDoubleTap, Key.stripFillers,
+         Key.fixQuotes, Key.fixTermsByRules]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

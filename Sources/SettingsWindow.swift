@@ -40,6 +40,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var recordingHUDToggle: NSButton!
     private var doubleTapToggle: NSButton!
     private var fillersToggle: NSButton!
+    private var quotesToggle: NSButton!
+    private var termRulesToggle: NSButton!
 
     // Vocabulary
     private var vocabTextView: NSTextView!
@@ -287,13 +289,23 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         sttLanguagePopup.action = #selector(sttLanguageChanged)
         stack.addArrangedSubview(labeledRow(L("settings.stt.language"), sttLanguagePopup))
 
-        stack.addArrangedSubview(makeHint(L("settings.stt.hint")))
+        // Подсказка ушла в точку «ⓘ»: вкладка и так самая высокая, а с двумя абзацами текста
+        // нижние элементы переставали помещаться в окно.
+        stack.addArrangedSubview(NSStackView(views: [
+            makeHint(L("settings.stt.short")), InfoDot(L("settings.stt.hint")),
+        ]))
 
-        stack.addArrangedSubview(header(L("settings.fillers.header")))
+        stack.addArrangedSubview(header(L("settings.cleanup.header")))
         fillersToggle = NSButton(checkboxWithTitle: L("settings.fillers.toggle"),
                                  target: self, action: #selector(fillersChanged))
-        stack.addArrangedSubview(fillersToggle)
-        stack.addArrangedSubview(makeHint(L("settings.fillers.hint")))
+        stack.addArrangedSubview(NSStackView(views: [
+            fillersToggle, InfoDot(L("settings.fillers.hint")),
+        ]))
+        quotesToggle = NSButton(checkboxWithTitle: L("settings.quotes.toggle"),
+                                target: self, action: #selector(quotesChanged))
+        stack.addArrangedSubview(NSStackView(views: [
+            quotesToggle, InfoDot(L("settings.quotes.hint")),
+        ]))
 
         return container
     }
@@ -327,6 +339,12 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         stack.addArrangedSubview(vocabCounter)
 
         stack.addArrangedSubview(makeHint(L("settings.vocab.hint")))
+
+        termRulesToggle = NSButton(checkboxWithTitle: L("settings.vocab.rules"),
+                                   target: self, action: #selector(termRulesChanged))
+        stack.addArrangedSubview(NSStackView(views: [
+            termRulesToggle, InfoDot(L("settings.vocab.rules.hint")),
+        ]))
 
         llmToggle = NSButton(checkboxWithTitle: L("settings.vocab.llm"),
                              target: self, action: #selector(llmChanged))
@@ -646,6 +664,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         recordingHUDToggle.state = Prefs.recordingHUD ? .on : .off
         doubleTapToggle.state = Prefs.toggleDoubleTap ? .on : .off
         fillersToggle.state = Prefs.stripFillers ? .on : .off
+        quotesToggle.state = Prefs.fixQuotes ? .on : .off
+        termRulesToggle.state = Prefs.fixTermsByRules ? .on : .off
         storeAudioToggle.state = Prefs.storeAudio ? .on : .off
         retentionField.integerValue = Prefs.retentionDays
         checkUpdatesToggle.state = Prefs.checkUpdatesOnLaunch ? .on : .off
@@ -776,6 +796,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func fillersChanged() {
         Prefs.stripFillers = (fillersToggle.state == .on)
+    }
+
+    @objc private func quotesChanged() {
+        Prefs.fixQuotes = (quotesToggle.state == .on)
+    }
+
+    @objc private func termRulesChanged() {
+        Prefs.fixTermsByRules = (termRulesToggle.state == .on)
     }
 
     @objc private func doubleTapChanged() {

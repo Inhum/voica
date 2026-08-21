@@ -108,6 +108,12 @@
 "settings.stt.language.auto" = "Auto-detect";
 "settings.stt.language.ru" = "Russian";
 "settings.stt.language.en" = "English";
+"settings.stt.short" = "Cloud engine only.";
+"settings.cleanup.header" = "Text clean-up";
+"settings.quotes.toggle" = "Fix quotation marks";
+"settings.quotes.hint" = "Straight quotes become proper guillemets, unpaired ones are removed, and a missing space after a colon is restored. Recognition places quotes however it happens to — one sentence can hold both kinds. English text is left alone.";
+"settings.vocab.rules" = "Fix terms by rules";
+"settings.vocab.rules.hint" = "Garbled spellings are pulled back to the ones you listed, right on this Mac: no key, no internet, both engines. The rules stay quiet when unsure. Turn this off if they ever get one of your words wrong.";
 "settings.fillers.header" = "Filler sounds";
 "settings.fillers.toggle" = "Remove \"uh\", \"um\", \"hmm\"";
 "settings.fillers.hint" = "Drawn-out sounds that mean nothing in speech but clutter the text. Removed by rules, no network needed. Real words that were merely drawn out are straightened rather than dropped. Turn this off if you transcribe speech verbatim.";

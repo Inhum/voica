@@ -373,8 +373,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // единственный бесплатный путь: словарь-подсказка `prompt` — фича облачного Whisper.
         var cleaned = raw.text
         if Prefs.stripFillers { cleaned = Normalizer.stripFillers(cleaned) }
-        let t = Transcription(text: Normalizer.fixTerms(cleaned, vocabulary: Prefs.vocabulary),
-                              language: raw.language, duration: raw.duration)
+        if Prefs.fixTermsByRules { cleaned = Normalizer.fixTerms(cleaned, vocabulary: Prefs.vocabulary) }
+        let t = Transcription(text: cleaned, language: raw.language, duration: raw.duration)
         if t.text.isEmpty {
             state = .idle
             try? FileManager.default.removeItem(at: rec.url)
@@ -459,7 +459,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                          raw: String? = nil) {
         // Последняя проверка перед выдачей (§6.4): непарную кавычку мог оставить и движок,
         // и модель, поэтому чистим здесь — после обоих, в единственной точке выдачи.
-        let text = Normalizer.balanceQuotes(rawText)
+        let text = Prefs.fixQuotes ? Normalizer.balanceQuotes(rawText) : rawText
         state = .idle
         Store.shared.insert(text: text, language: t.language,
                             duration: t.duration ?? rec.duration,
@@ -643,8 +643,8 @@ if let i = CommandLine.arguments.firstIndex(of: "--normalize-corpus"),
         // Тот же порядок, что в диктовке: сперва филлеры, потом термины.
         var after = line
         if Prefs.stripFillers { after = Normalizer.stripFillers(after) }
-        after = Normalizer.fixTerms(after, vocabulary: Prefs.vocabulary)
-        after = Normalizer.balanceQuotes(after)   // как в выдаче: проверка идёт последней
+        if Prefs.fixTermsByRules { after = Normalizer.fixTerms(after, vocabulary: Prefs.vocabulary) }
+        if Prefs.fixQuotes { after = Normalizer.balanceQuotes(after) }
         if after != line {
             changed += 1
             print("— \(line)\n+ \(after)\n")
