@@ -47,7 +47,12 @@ if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
     SIGN="$IDENTITY"; NOTE="сертификатом ${IDENTITY}"
 else
     SIGN="-"; NOTE="ad-hoc"
-    echo "⚠ Сертификат «$IDENTITY» не найден — подпись будет ad-hoc."
+    # ⚠️ Скобки обязательны. Без них bash принимает байты ёлочки за продолжение имени
+    # переменной, и под `set -u` это «unbound variable» — сборка падает. Поймалось только
+    # на CI, потому что ЭТА ветка выполняется лишь когда сертификата нет: на машине
+    # разработчика он есть, ветка не запускается, и ошибка не всплывает. Проверять ветку
+    # без сертификата отдельно.
+    echo "⚠ Сертификат «${IDENTITY}» не найден — подпись будет ad-hoc."
     echo "  Причин две: сертификата нет (./scripts/make-cert.sh) ИЛИ связка ключей заперта."
     echo "  Проверить связку: security unlock-keychain login.keychain"
 fi
