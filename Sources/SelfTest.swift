@@ -370,17 +370,24 @@ enum SelfTest {
         check("normalizer no vocabulary is noop",
               Normalizer.fixTerms("Dпсик", vocabulary: "  ") == "Dпсик")
         // Смешанное слово, не похожее ни на один термин, трогать нельзя.
-        // Чистая латиница — тоже кандидат, но с побуквенной проверкой: «Greek» и «Groq»
-        // имеют один костяк (grk), и без неё одно превратилось бы в другое.
+        // Чистая латиница — тоже кандидат, но с побуквенной проверкой (≥ 0.5).
         // Живой промах: модель услышала «псих» вместо «сик», костяк разошёлся на одну согласную.
         check("normalizer fixes Dппсих",
               Normalizer.fixTerms("Поставил Dппсих, проверка", vocabulary: vocab)
               == "Поставил DeepSeek, проверка")
         check("normalizer keeps lookalike latin word",
               Normalizer.fixTerms("это Greek текст", vocabulary: vocab) == "это Greek текст")
+        // ⚠️ «Greek» держит НЕ порог, а костяк: `c` сворачивается в `k`, `q` — нет.
+        // Спека до 0.9.18 называла причиной порог; проверяем ту, что работает на самом деле.
+        check("skeleton separates Greek from Groq",
+              Normalizer.skeleton("Greek") != Normalizer.skeleton("Groq"))
         check("similarity separates Deepsc from Greek",
-              Normalizer.similarity("deepsc", "deepseek") >= 0.6
-              && Normalizer.similarity("greek", "groq") < 0.6)
+              Normalizer.similarity("deepsc", "deepseek") >= 0.5
+              && Normalizer.similarity("greek", "groq") < 0.5)
+        // Порог 0.5, а не 0.6: живой промах — точный костяк при близости ровно 0.50.
+        check("normalizer fixes Depsic at 0.50",
+              Normalizer.fixTerms("Движок написал Depsic вместо", vocabulary: vocab)
+              == "Движок написал DeepSeek вместо")
         check("normalizer leaves unknown mixed word",
               Normalizer.fixTerms("вот Xюйня тут", vocabulary: vocab) == "вот Xюйня тут")
         check("mixed script detected", Normalizer.hasMixedScript("Dпсик"))
@@ -444,11 +451,12 @@ enum SelfTest {
         // «Эм» — не филлер: так движок пишет GigaAM.
         check("filler keeps Эм in a name",
               Normalizer.stripFillers("это \"Джига Эм\" такой") == "это \"Джига Эм\" такой")
-        // Знак конца предложения стоит ДО филлера — его и надо сохранить.
+        // Знак конца предложения стоит ДО филлера — его и надо сохранить, а слово после
+        // филлера поднять в заглавную: филлер стоял в начале предложения.
         check("filler keeps question mark before",
-              Normalizer.stripFillers("Почему? А-а, как бы") == "Почему? как бы")
+              Normalizer.stripFillers("Почему? А-а, как бы") == "Почему? Как бы")
         check("filler keeps period before",
-              Normalizer.stripFillers("ставил. Хмм, внедряли") == "ставил. внедряли")
+              Normalizer.stripFillers("ставил. Хмм, внедряли") == "ставил. Внедряли")
 
         // Непарные кавычки (§6.4). Живой случай: GigaAM открыла ёлочку и не закрыла.
         check("quotes drop unclosed opening",
@@ -470,6 +478,27 @@ enum SelfTest {
               Normalizer.stripFillers("Э-э-э, проверка") == "Проверка")
         check("filler does not capitalise mid-sentence",
               Normalizer.stripFillers("это, ммм, проверка") == "это, проверка")
+        // Живые случаи из истории: филлер СТРОЧНЫЙ, но стоит после точки — значит начинает
+        // предложение, и следующее слово обязано быть с заглавной. Только регистра филлера
+        // для этого мало, нужен уцелевший разделитель.
+        check("filler capitalises after lowercase filler at sentence start",
+              Normalizer.stripFillers("возьмут на улицу. э-э, на работу потом")
+              == "возьмут на улицу. На работу потом")
+        check("filler capitalises after uppercase filler mid-text",
+              Normalizer.stripFillers("пошёл увольняться. Э-э, но тогда")
+              == "пошёл увольняться. Но тогда")
+        check("filler capitalises after short sentence",
+              Normalizer.stripFillers("и ушёл. Всё. Э-э-э, вот и всё")
+              == "и ушёл. Всё. Вот и всё")
+        // ⚠️ Контрпример к признаку «филлер был с заглавной»: в середине фразы он врёт —
+        // движок пишет филлер с заглавной как отдельную реплику. Живая строка из истории.
+        check("filler does not capitalise after comma despite uppercase filler",
+              Normalizer.stripFillers("их закрыли, Хмм, потом решили заниматься")
+              == "их закрыли, потом решили заниматься")
+        // «Угу», «ага», «мхм» — согласие, а не мычание: их НЕ удаляем. Раньше они лежали
+        // в списке филлеров и не срабатывали никогда (гейт на две буквы), теперь их там нет.
+        check("filler keeps agreement words",
+              Normalizer.stripFillers("Угу, ага, мхм") == "Угу, ага, мхм")
         check("filler removes хмм", Normalizer.stripFillers("проверка хмм всяких слов")
               == "проверка всяких слов")
         check("filler removes ммм", Normalizer.stripFillers("ммм ну ладно") == "ну ладно")

@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.9.18] — unreleased — Text cleanup follows what was actually said
+
+### Fixed
+- **A filler in the middle of the text no longer leaves the next sentence in lower case.**
+  The rule only looked at the very start of the text, so "…they took him outside. uh, to work
+  then" kept "to" in lower case. The sentence boundary is decided by the separator that
+  survives the removal — there are two around a filler and only one is kept — and the case of
+  the filler itself now counts only at the start of the text. Mid-text it lies: the recogniser
+  writes a filler capitalised as a remark of its own, and "closed them, Hmm, then decided"
+  would have become "closed them, Then decided".
+- **"Угу", "ага" and "мхм" were listed as fillers but could never fire** — the length gate lets
+  through forms of up to two letters, and all three are three. Found by mirroring against the
+  Windows port. They are not being resurrected: these are words of agreement, they carry
+  meaning unlike mumbling, and a dictation consisting of a single "Ага." would have come out
+  empty. The list now holds only what it can actually remove.
+
+### Changed
+- **Terms written in plain Latin are matched a little more freely** — letter similarity of 0.5
+  instead of 0.6, on top of the exact consonant skeleton that was always required. A live miss
+  prompted it: the engine wrote `Depsic`, the skeleton matched `DeepSeek` exactly, and the
+  similarity came out at exactly 0.50. Running the whole history (138 lines, texts and raw)
+  at 0.5 changed not a single line against 0.6 — twenty replacements either way — and the traps
+  hold: "Greek" is kept away from "Groq" by the skeleton, not by the threshold.
+- **The local engine hint no longer says the vocabulary is cloud-only.** Rules fix terms on
+  both engines, without a key or a network, and that is where they help most.
+
 ## [0.9.17] — 2026-08-20 — The capsule now shows what the microphone hears
 
 ### Added

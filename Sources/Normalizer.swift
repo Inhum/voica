@@ -156,7 +156,18 @@ enum Normalizer {
     }
 
     /// Свёрнутые формы, которые целиком являются мусором и удаляются даже без растяжки.
-    private static let fillerWords: Set<String> = ["хм", "мхм", "угу", "ага", "э"]   // «эм» НЕ филлер: так движок пишет «GigaAM» — «Джига Эм»
+    ///
+    /// ⚠️ Список обязан состоять из форм длиной **до двух букв** — ровно их пропускает гейт
+    /// `col.count <= 2` ниже. Всё длиннее не сработает никогда и будет тихо лежать мёртвым:
+    /// так тут и лежали `мхм`, `угу`, `ага` (нашлось при сверке с Windows).
+    ///
+    /// Их не вернули, подняв гейт, а убрали намеренно: «угу», «ага», «мхм» — это СОГЛАСИЕ,
+    /// в них есть смысл, в отличие от мычания. Диктовка из одного «Ага.» после удаления
+    /// стала бы пустой. Тот же довод, по которому растянутое «ну-у-у» распрямляется,
+    /// а не выбрасывается.
+    ///
+    /// «эм» НЕ филлер по другой причине: так движок пишет «GigaAM» — «Джига Эм».
+    private static let fillerWords: Set<String> = ["хм", "э"]
     /// Растянутые НАСТОЯЩИЕ слова, которые надо распрямить, а не удалить. Список явный:
     /// распрямлять всё подряд нельзя — «PPC» стало бы «Pc», «All» → «Al», «ноо» → «но».
     private static let stretchable: Set<String> = ["ну", "но", "да", "нет", "вот", "так"]
@@ -183,7 +194,8 @@ enum Normalizer {
         var prevWord = ""
         var dropped = false
         var didDrop = false        // хоть один филлер убрали — только тогда нужна уборка
-        var droppedAtStart = false // филлер стоял в самом начале и был с заглавной
+        var droppedWasUpper = false // убранный филлер был с заглавной
+        var pendingCapital = false  // следующему слову нужна заглавная: филлер начинал предложение
 
         func flush() {
             guard !word.isEmpty else { return }
@@ -192,6 +204,9 @@ enum Normalizer {
             let untouchable = word.contains { $0.isNumber }
                 || (word.count >= 2 && word.allSatisfy { !$0.isLetter || $0.isUppercase })
             guard !untouchable else {
+                // Заглавная тут ни при чём: число не капитализируется, аббревиатура и так
+                // заглавная. Но флаг надо погасить, иначе он уедет на следующее слово.
+                pendingCapital = false
                 out += sep + word; prevWord = word; word = ""; sep = ""; dropped = false; return
             }
             let col = collapsed(word)
@@ -210,9 +225,10 @@ enum Normalizer {
                 // «проверка хмм всяких» давало «проверкався ких».
                 dropped = true
                 didDrop = true
-                // «Э-э-э, проверка» → «проверка» начиналось со строчной и выглядело неряшливо.
-                // Заглавная у филлера означает, что он стоял в начале предложения.
-                if out.isEmpty, word.first?.isUppercase == true { droppedAtStart = true }
+                // Регистр филлера — признак того, что он стоял в начале предложения. Решение
+                // принимается не здесь: разделитель, который достанется следующему слову,
+                // ещё не выбран (см. pickSeparator).
+                droppedWasUpper = word.first?.isUppercase == true
                 word = ""
                 return
             } else {
@@ -221,7 +237,11 @@ enum Normalizer {
                 // схлопывание съедало бы двойные буквы в обычных словах: «коммуникации»
                 // превратились бы в «комуникации».
                 let stretched = shrank && stretchable.contains(col)
-                let fixed = stretched ? restoreCase(col, like: word) : word
+                var fixed = stretched ? restoreCase(col, like: word) : word
+                if pendingCapital {
+                    pendingCapital = false
+                    fixed = capitalizedFirst(fixed)
+                }
                 out += sep + fixed
                 prevWord = word
                 dropped = false
@@ -239,6 +259,16 @@ enum Normalizer {
             // теряло вопросительный знак, превращаясь в «Почему, как бы».
             let hasPunct = { (t: String) in t.contains { $0.isPunctuation } }
             if !hasPunct(sep) && hasPunct(sepAfter) { sep = sepAfter }
+            // Заглавная следующему слову — если филлер начинал предложение. Решать можно
+            // только теперь: разделителей вокруг филлера два, а уцелел один, и именно он
+            // говорит, кончилось ли предложение.
+            //
+            // ⚠️ Регистр САМОГО филлера — признак только в начале текста, где разделителя
+            // слева нет вовсе. В середине он врёт: движок пишет филлер с заглавной как
+            // отдельную реплику, и «их закрыли, Хмм, потом решили» давало «закрыли, Потом»
+            // (живая строка из истории). Дальше решает только разделитель.
+            if (out.isEmpty && droppedWasUpper) || endsSentence(sep) { pendingCapital = true }
+            droppedWasUpper = false
             sepAfter = ""
             dropped = false
         }
@@ -259,9 +289,17 @@ enum Normalizer {
         // удаляли, запускать её нельзя: она переформатировала бы чужую пунктуацию, например
         // склеивала «контрагентов. ..» в «контрагентов...», чего никто не просил.
         guard didDrop else { return out }
-        let cleaned = tidy(out)
-        guard droppedAtStart, let first = cleaned.first, first.isLowercase else { return cleaned }
-        return first.uppercased() + cleaned.dropFirst()
+        return tidy(out)
+    }
+
+    /// Разделитель закрывает предложение — значит следующее слово начинает новое.
+    private static func endsSentence(_ sep: String) -> Bool {
+        sep.contains { ".!?…".contains($0) }
+    }
+
+    private static func capitalizedFirst(_ s: String) -> String {
+        guard let first = s.first, first.isLowercase else { return s }
+        return first.uppercased() + s.dropFirst()
     }
 
     private static func restoreCase(_ s: String, like original: String) -> String {
@@ -269,8 +307,9 @@ enum Normalizer {
         return s.prefix(1).uppercased() + s.dropFirst()
     }
 
-    /// Уборка после удаления: сдвоенные пробелы, повисшие и слипшиеся знаки, заглавная
-    /// после точки. Без неё «Ну, эээ, дальше» дало бы «Ну, , дальше» — заметно хуже исходного.
+    /// Уборка после удаления: сдвоенные пробелы и повисшие знаки. Без неё «Ну, эээ, дальше»
+    /// дало бы «Ну, , дальше» — заметно хуже исходного. Заглавную ставит не она, а разбор:
+    /// там известно, какой разделитель уцелел (см. pickSeparator).
     private static func tidy(_ s: String) -> String {
         var t = s
         // Только следы удаления: сдвоенные пробелы и знак, оставшийся в начале строки.
@@ -371,8 +410,7 @@ enum Normalizer {
     /// • **смешанный алфавит** (`Dпсик`) — доказательство само по себе, в русском тексте так
     ///   не пишут. Хватает костяка, допускается расхождение на одну согласную.
     /// • **чистая латиница** (`Deepsc`) — ничего не доказывает, в русской диктовке полно
-    ///   английских слов. Костяк должен совпасть точно, плюс побуквенная близость ≥ 0.6,
-    ///   иначе «Greek» стало бы «Groq».
+    ///   английских слов. Костяк должен совпасть точно, плюс побуквенная близость ≥ 0.5.
     /// • **чистая кириллица** (`клодкод`) — не доказывает ничего вовсе. Только точный костяк
     ///   **от четырёх букв**. Мера вымерена на живых ловушках: «Вика» даёт костяк Voica
     ///   один в один, «Папа» — API, «усы» — ЕИС, а при малейшем послаблении «депеша»
@@ -402,7 +440,13 @@ enum Normalizer {
         }
         if onlyLatin {
             let w = latinized(word)
-            hits = hits.filter { similarity(w, latinized($0)) >= 0.6 }
+            // Порог 0.5, а не 0.6 (macOS 0.9.18). Причина смены — живой промах: движок
+            // написал `Depsic`, костяк совпал точно, а побуквенно вышло ровно 0.50, и термин
+            // не починился. Прогон по всей истории (138 строк, тексты + сырые) при 0.5 не
+            // изменил НИ ОДНОЙ строки против 0.6 — двадцать замен там и там, — а ловушки
+            // держатся не порогом: «Greek»/«Groq» отсеиваются костяком (`grk` против `grq`,
+            // `q` в `k` не сворачивается), «vice versa» — минимальной длиной костяка.
+            hits = hits.filter { similarity(w, latinized($0)) >= 0.5 }
         }
         guard !hits.isEmpty else { return nil }
         // Несколько терминов с одним костяком — берём ближайший по длине к сказанному.
