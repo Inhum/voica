@@ -183,6 +183,7 @@ enum Normalizer {
         var prevWord = ""
         var dropped = false
         var didDrop = false        // хоть один филлер убрали — только тогда нужна уборка
+        var droppedAtStart = false // филлер стоял в самом начале и был с заглавной
 
         func flush() {
             guard !word.isEmpty else { return }
@@ -209,6 +210,9 @@ enum Normalizer {
                 // «проверка хмм всяких» давало «проверкався ких».
                 dropped = true
                 didDrop = true
+                // «Э-э-э, проверка» → «проверка» начиналось со строчной и выглядело неряшливо.
+                // Заглавная у филлера означает, что он стоял в начале предложения.
+                if out.isEmpty, word.first?.isUppercase == true { droppedAtStart = true }
                 word = ""
                 return
             } else {
@@ -254,7 +258,10 @@ enum Normalizer {
         // Уборка чинит следы удаления — повисшие запятые и сдвоенные пробелы. Если ничего не
         // удаляли, запускать её нельзя: она переформатировала бы чужую пунктуацию, например
         // склеивала «контрагентов. ..» в «контрагентов...», чего никто не просил.
-        return didDrop ? tidy(out) : out
+        guard didDrop else { return out }
+        let cleaned = tidy(out)
+        guard droppedAtStart, let first = cleaned.first, first.isLowercase else { return cleaned }
+        return first.uppercased() + cleaned.dropFirst()
     }
 
     private static func restoreCase(_ s: String, like original: String) -> String {

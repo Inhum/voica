@@ -182,6 +182,34 @@ final class LocalSTT {
         return 0
     }
 
+    /// Запасной поиск нахлёста, когда пословное сравнение бессильно: окна разбили одно и то же
+    /// место на РАЗНОЕ число слов, и выравнивание слово-в-слово ломается в принципе. Живой
+    /// случай: одно окно услышало «3кар», соседнее — «Три кар», четыре слова против пяти.
+    ///
+    /// Сравниваем склейки без пробелов, потому что именно границы слов и разъехались. Ищем самую
+    /// длинную пару «j слов с конца A, k слов с начала B», похожую выше порога.
+    ///
+    /// ⚠️ Только как ЗАПАСНОЙ путь, после того как пословное сравнение ничего не нашло: сравнение
+    /// склеек заметно свободнее, и пускать его первым значит рисковать съесть лишнее. Минимум в
+    /// 10 символов — оттуда же: на коротких кусках любые две фразы похожи.
+    private static func fuzzyOverlap(_ aw: [String], _ bw: [String]) -> Int? {
+        func norm(_ words: ArraySlice<String>) -> String {
+            words.joined().lowercased().filter { $0.isLetter || $0.isNumber }
+        }
+        var best: (drop: Int, weight: Int)?
+        for j in 1...min(12, aw.count) {
+            let x = norm(aw.suffix(j))
+            guard x.count >= 10 else { continue }
+            for k in 1...min(12, bw.count) {
+                let y = norm(bw.prefix(k))
+                guard y.count >= 10, Normalizer.similarity(x, y) >= 0.8 else { continue }
+                let weight = x.count + y.count
+                if best == nil || weight > best!.weight { best = (k, weight) }
+            }
+        }
+        return best?.drop
+    }
+
     static func stitch(_ a: String, _ b: String) -> String {
         if a.isEmpty { return b }
         if b.isEmpty { return a }
@@ -201,6 +229,9 @@ final class LocalSTT {
             let k = overlapLength(Array(an.dropLast()), bn)
             if k > 0 { return (aw.dropLast() + bw.dropFirst(k)).joined(separator: " ") }
         }
+        // Пословно не нашлось — пробуем сравнить склейки: возможно, окна просто разбили одно
+        // место на разное число слов.
+        if let k = fuzzyOverlap(aw, bw) { return (aw + bw.dropFirst(k)).joined(separator: " ") }
         return (aw + bw).joined(separator: " ")
     }
 

@@ -188,6 +188,17 @@ enum SelfTest {
         // Короткий ряд прощения не получает — доказательств мало.
         check("stitch does not forgive in a short run",
               LocalSTT.stitch("раз стол", "стоп три") == "раз стол стоп три")
+        // Окна разбили одно место на РАЗНОЕ число слов: «3кар» против «Три кар». Пословное
+        // сравнение тут бессильно — выравнивание ломается, — выручает сравнение склеек.
+        check("stitch dedups across word-count mismatch",
+              LocalSTT.stitch("банковской системы 3кар. В 2004 году.",
+                              "Три кар. В 2004 году защитил диплом на отлично.")
+              == "банковской системы 3кар. В 2004 году. защитил диплом на отлично.")
+        // Запасной путь не должен склеивать несвязанные фразы.
+        check("stitch fuzzy keeps unrelated text",
+              LocalSTT.stitch("сегодня хорошая погода на улице",
+                              "завтра поеду в магазин за продуктами")
+              == "сегодня хорошая погода на улице завтра поеду в магазин за продуктами")
         check("stitch keeps different short words",
               LocalSTT.stitch("я купил стол", "стоп машина") == "я купил стол стоп машина")
         check("stitch no overlap concatenates",
@@ -403,7 +414,7 @@ enum SelfTest {
         check("filler drops duplicate comma",
               Normalizer.stripFillers("Ну, эээ, дальше") == "Ну, дальше")
         // Одиночное «э» — всегда мусор: союзом или предлогом оно, в отличие от «а», не бывает.
-        check("filler removes bare э", Normalizer.stripFillers("Э это, короче") == "это, короче")
+        check("filler removes bare э", Normalizer.stripFillers("Э это, короче") == "Это, короче")
         check("filler drops leading punctuation",
               Normalizer.stripFillers("-э-э. Проверка слов") == "Проверка слов")
         // Прямая кавычка, оставшаяся без пары после вычистки ёлочки.
@@ -453,11 +464,16 @@ enum SelfTest {
               Normalizer.balanceQuotes("обычный текст") == "обычный текст")
 
         // Филлеры (§6.2). Формы взяты из настоящих диктовок пользователя.
-        check("filler removes stretched э", Normalizer.stripFillers("Э-э-э, проверка") == "проверка")
+        // Филлер в начале предложения — следующее слово поднимаем в заглавную, иначе фраза
+        // начинается со строчной и выглядит неряшливо.
+        check("filler capitalises after leading drop",
+              Normalizer.stripFillers("Э-э-э, проверка") == "Проверка")
+        check("filler does not capitalise mid-sentence",
+              Normalizer.stripFillers("это, ммм, проверка") == "это, проверка")
         check("filler removes хмм", Normalizer.stripFillers("проверка хмм всяких слов")
               == "проверка всяких слов")
         check("filler removes ммм", Normalizer.stripFillers("ммм ну ладно") == "ну ладно")
-        check("filler removes А-а", Normalizer.stripFillers("А-а, как бы почему") == "как бы почему")
+        check("filler removes А-а", Normalizer.stripFillers("А-а, как бы почему") == "Как бы почему")
         // Растянутое НАСТОЯЩЕЕ слово распрямляется, а не удаляется.
         check("filler straightens Ну-у-у", Normalizer.stripFillers("Ну-у-у, там я работал")
               == "Ну, там я работал")

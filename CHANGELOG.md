@@ -14,7 +14,8 @@ All notable changes to this project are documented here. The format is based on
   A word that was merely drawn out is straightened rather than dropped: "ну-у-у" becomes "ну",
   since throwing it away would lose meaning. Ordinary speech is left alone — single "а", "и",
   "у" and "о" are conjunctions and prepositions, numbers and all-caps abbreviations are never
-  touched.
+  touched. A filler at the start of a sentence leaves the next word capitalised, so the text
+  doesn't begin in lower case.
 - **Quotes are tidied up.** The recogniser writes them however it happens to: guillemets and
   straight quotes turn up in the same sentence, one side of a pair goes missing, and the space
   after a colon disappears. Straight quotes now become proper Russian guillemets based on where
@@ -27,6 +28,13 @@ All notable changes to this project are documented here. The format is based on
   already open, and the model likes to wrap a substituted term in quotes despite being told not
   to, often on one side only. Since there is no telling which of them did it, the check runs last,
   after both. Matched pairs are left alone.
+
+### Fixed
+- **One more kind of doubling in long dictations.** Recordings are stitched from 25-second
+  windows, and neighbouring windows sometimes split the same spot into a different number of
+  words — one heard "3кар", the next "Три кар". Word-by-word comparison cannot line those up at
+  all, so the phrase was written twice. Voica now falls back to comparing the joined text when
+  the word-by-word pass finds nothing.
 
 ### Changed
 - **The wave in the recording capsule follows your actual voice** instead of running the same
