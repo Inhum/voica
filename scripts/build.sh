@@ -35,14 +35,45 @@ done
 # Подпись. Если есть локальный сертификат «Voica Self-Signed» — подписываем им
 # (стабильная идентичность → разрешение Accessibility держится между обновлениями).
 # Иначе откат на ad-hoc. Сертификат создаётся один раз: ./scripts/make-cert.sh
+#
+# ⚠️ Откат на ad-hoc обязан быть ГРОМКИМ. Он выглядит как успешная сборка, а расплата
+# приходит позже и не связывается с причиной: ad-hoc привязывает удостоверение к хешу
+# бинаря, поэтому каждая пересборка — новое приложение для macOS, и разрешение
+# Accessibility приходится выдавать заново, а вставка текста до этого не работает.
+# Самый коварный путь сюда — ЗАПЕРТАЯ связка ключей: сертификат есть, но
+# `security find-identity` его не видит, и скрипт молча уходит в ad-hoc.
 IDENTITY="Voica Self-Signed"
 if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
     SIGN="$IDENTITY"; NOTE="сертификатом ${IDENTITY}"
 else
-    SIGN="-"; NOTE="ad-hoc (сертификата нет — см. scripts/make-cert.sh)"
+    SIGN="-"; NOTE="ad-hoc"
+    echo "⚠ Сертификат «$IDENTITY» не найден — подпись будет ad-hoc."
+    echo "  Причин две: сертификата нет (./scripts/make-cert.sh) ИЛИ связка ключей заперта."
+    echo "  Проверить связку: security unlock-keychain login.keychain"
 fi
-codesign --force --sign "$SIGN" "$APP" >/dev/null 2>&1 \
-    && echo "→ Подписано $NOTE" \
-    || echo "⚠ codesign не сработал (запуск всё равно возможен)"
+
+# Ошибку codesign НЕ глушим: раньше она уходила в /dev/null, и причину отказа
+# было не узнать в принципе.
+if ! SIGN_ERR="$(codesign --force --sign "$SIGN" "$APP" 2>&1)"; then
+    echo "⚠ codesign не сработал (запуск всё равно возможен):"
+    echo "  ${SIGN_ERR:-без сообщения}"
+else
+    echo "→ Подписано $NOTE"
+fi
+
+# Проверяем РЕЗУЛЬТАТ, а не намерение: подпись сертификатом даёт в требованиях
+# «certificate leaf», ad-hoc — «cdhash». Единственный надёжный способ отличить.
+if codesign -d --requirements - "$APP" 2>&1 | grep -q "certificate leaf"; then
+    :
+else
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║ ВНИМАНИЕ: приложение подписано AD-HOC, а не сертификатом.             ║"
+    echo "║ macOS будет считать каждую пересборку новым приложением и заново      ║"
+    echo "║ просить доступ к Accessibility; до выдачи вставка текста не работает. ║"
+    echo "║ Лечится: security unlock-keychain login.keychain  или  make-cert.sh   ║"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+    echo ""
+fi
 
 echo "✓ Готово: $APP"
