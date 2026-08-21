@@ -86,6 +86,7 @@
 "settings.key.status.checking" = "Проверяю…";
 "settings.key.status.valid" = "Ключ рабочий";
 "settings.key.status.invalid" = "%@";
+"settings.key.nokey" = "Ключа нет? Он нужен только облачному движку. Переключите распознавание на «Локально (офлайн)» выше — оно работает без ключа и без интернета.";
 "settings.key.hint" = "Ключ сохраняется кнопкой «Сохранить». Остальные настройки применяются сразу.";
 "settings.dictation.header" = "Диктовка";
 "settings.mode.label" = "Режим:";

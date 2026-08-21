@@ -86,6 +86,7 @@
 "settings.key.status.checking" = "Checking…";
 "settings.key.status.valid" = "Key works";
 "settings.key.status.invalid" = "%@";
+"settings.key.nokey" = "No key? It's only needed for the cloud engine. Switch recognition to \"Local (offline)\" above — it runs with no key and no internet.";
 "settings.key.hint" = "The key is saved with the Save button. Other settings apply immediately.";
 "settings.dictation.header" = "Dictation";
 "settings.mode.label" = "Mode:";

@@ -21,6 +21,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var plainKeyField: NSTextField!
     private var showKeyToggle: NSButton!
     private var keyStatusLabel: NSTextField!
+    private var noKeyHint: NSTextField!
     private var statusIcon: NSImageView!
     private var statusSpinner: NSProgressIndicator!
     private var checkUpdatesToggle: NSButton!
@@ -41,6 +42,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var doubleTapToggle: NSButton!
     private var fillersToggle: NSButton!
     private var quotesToggle: NSButton!
+    private var llmStatusRow: NSStackView!
     private var termRulesToggle: NSButton!
 
     // Vocabulary
@@ -104,11 +106,17 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         window?.contentViewController = tabs
     }
 
+    /// Ширина вкладки. Одна на все — окно должно менять высоту под содержимое, но НЕ ширину:
+    /// иначе оно скачет при переключении табов, а места по горизонтали и так хватает.
+    private static let tabWidth: CGFloat = 460
+
     private func addTab(_ label: String, symbol: String, view: NSView) {
         let vc = NSViewController()
         vc.view = view
         view.layoutSubtreeIfNeeded()
-        vc.preferredContentSize = view.fittingSize   // окно меняет высоту под вкладку
+        // Берём только высоту. `fittingSize` содержит и ширину, а она у вкладок расходится
+        // (самая широкая — Dictation), и окно прыгало по горизонтали при каждом переключении.
+        vc.preferredContentSize = NSSize(width: Self.tabWidth, height: view.fittingSize.height)
         let item = NSTabViewItem(viewController: vc)
         item.label = label
         item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: label)
@@ -119,7 +127,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private func tabContainer() -> (NSView, NSStackView) {
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.widthAnchor.constraint(equalToConstant: 460).isActive = true
+        container.widthAnchor.constraint(equalToConstant: Self.tabWidth).isActive = true
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -210,6 +218,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         keyBtnRow.spacing = 6
         stack.addArrangedSubview(keyBtnRow)
 
+        // Выход из тупика первого запуска: ключа нет, поле открыто, и человек решает, что без
+        // ключа приложение бесполезно. Строка стоит там, куда смотрит глаз — под полем ключа,
+        // а не выше у переключателя движка. Цвет обычный, не блёклый: среди трёх серых
+        // подсказок на этой вкладке она бы потерялась, и весь смысл пропал бы.
+        noKeyHint = makeHint(L("settings.key.nokey"))
+        noKeyHint.textColor = .labelColor
+        stack.addArrangedSubview(noKeyHint)
+
         let hint = makeHint(L("settings.key.hint"))
         stack.addArrangedSubview(hint)
 
@@ -292,7 +308,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         // Подсказка ушла в точку «ⓘ»: вкладка и так самая высокая, а с двумя абзацами текста
         // нижние элементы переставали помещаться в окно.
         stack.addArrangedSubview(NSStackView(views: [
-            makeHint(L("settings.stt.short")), InfoDot(L("settings.stt.hint")),
+            makeShortHint(L("settings.stt.short")), InfoDot(L("settings.stt.hint")),
         ]))
 
         stack.addArrangedSubview(header(L("settings.cleanup.header")))
@@ -342,9 +358,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         termRulesToggle = NSButton(checkboxWithTitle: L("settings.vocab.rules"),
                                    target: self, action: #selector(termRulesChanged))
-        stack.addArrangedSubview(NSStackView(views: [
-            termRulesToggle, InfoDot(L("settings.vocab.rules.hint")),
-        ]))
+        stack.addArrangedSubview(termRulesToggle)
+        // Здесь подсказка в потоке, а не в точке «ⓘ»: на этой вкладке так оформлены все
+        // остальные, и высоты хватает — в отличие от Dictation, где она и переполнялась.
+        stack.addArrangedSubview(makeHint(L("settings.vocab.rules.hint")))
 
         llmToggle = NSButton(checkboxWithTitle: L("settings.vocab.llm"),
                              target: self, action: #selector(llmChanged))
@@ -361,10 +378,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         llmStatusLabel.cell?.isScrollable = false
         llmStatusLabel.preferredMaxLayoutWidth = 400
         llmStatusLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 400).isActive = true
-        let llmStatusRow = NSStackView(views: [llmSpinner, llmStatusIcon, llmStatusLabel])
-        llmStatusRow.spacing = 6
-        llmStatusRow.alignment = .top
-        stack.addArrangedSubview(llmStatusRow)
+        let statusRow = NSStackView(views: [llmSpinner, llmStatusIcon, llmStatusLabel])
+        statusRow.spacing = 6
+        statusRow.alignment = .top
+        // Пустая строка статуса всё равно занимала высоту, и при выключенном ИИ-проходе внизу
+        // вкладки зияла дыра. Прячем её вместе с выбором модели.
+        statusRow.isHidden = true
+        llmStatusRow = statusRow
+        stack.addArrangedSubview(statusRow)
 
         // Выбор chat-модели: «Рекомендуемая (автоматически)» + живой список (power-user).
         chatModelPopup = NSPopUpButton()
@@ -532,13 +553,28 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         return row
     }
 
-    private func makeHint(_ text: String) -> NSTextField {
+    /// Короткая подпись для ряда с точкой «ⓘ»: ширина по содержимому, как у чекбокса.
+    ///
+    /// `makeHint` для этого не годится: он делает переносящуюся по словам подпись, а такой
+    /// нужна ЗАДАННАЯ ширина — иначе непонятно, где переносить. Из-за этого точка вставала
+    /// после коробки в 424 пункта, то есть у правого края окна, а не после текста.
+    private func makeShortHint(_ text: String) -> NSTextField {
+        let hint = NSTextField(labelWithString: text)
+        hint.font = .systemFont(ofSize: 11)
+        hint.textColor = .secondaryLabelColor
+        return hint
+    }
+
+    private func makeHint(_ text: String, width: CGFloat = 424) -> NSTextField {
         // Подстрочные пояснения: 11pt + secondaryLabel — читаемо, как в системных
         // настройках и Tailscale (10pt/tertiary были слишком мелкими и блёклыми).
         let hint = NSTextField(wrappingLabelWithString: text)
         hint.font = .systemFont(ofSize: 11)
         hint.textColor = .secondaryLabelColor
-        hint.widthAnchor.constraint(equalToConstant: 424).isActive = true
+        // Ширина задаётся явно, иначе перенос по словам не работает. Для подсказки, стоящей
+        // рядом с точкой «ⓘ», её надо уменьшить: иначе ряд не влезает в 424 пункта содержимого,
+        // точка уезжает за край, а окно расширяется под неё — вкладки становятся разной ширины.
+        hint.widthAnchor.constraint(equalToConstant: width).isActive = true
         return hint
     }
 
@@ -645,6 +681,12 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         var frame = window.frame
         frame.size.height += delta
         frame.origin.y -= delta
+        // Ширину задаём ЖЁСТКО, а не «не трогаем»: одного `preferredContentSize` мало —
+        // NSTabViewController всё равно подгоняет окно под фактическую ширину вкладки, и она
+        // у Dictation больше. Окно от этого прыгало по горизонтали при каждом переключении,
+        // хотя места и так хватает. Меняться должна только высота.
+        frame.size.width = window.frameRect(forContentRect:
+            NSRect(x: 0, y: 0, width: Self.tabWidth, height: 0)).width
         window.setFrame(frame, display: true)
     }
 
@@ -743,6 +785,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         }
         if KeyStore.save(key) {
             setKeyStatus(L("settings.key.status.savedNow"), .success)
+            refreshNoKeyHint()          // ключ появился — подсказка про локальный движок не нужна
         } else {
             setKeyStatus(L("settings.key.status.saveFailed"), .error)
         }
@@ -904,8 +947,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         }
     }
 
+    /// Строка про локальный движок нужна ровно в одной ситуации: выбрано облако и ключа нет.
+    /// Есть ключ — облако работает; выбран локальный — ключ и не требуется.
+    private func refreshNoKeyHint() {
+        noKeyHint?.isHidden = !(Prefs.sttEngine == "cloud" && KeyStore.load() == nil)
+    }
+
     private func refreshEngineUI() {
+        refreshNoKeyHint()
         engineControl.selectedSegment = (Prefs.sttEngine == "local") ? 1 : 0
+        refreshNoKeyHint()
         let downloading = ModelDownloader.shared.isDownloading
         engineProgress.isHidden = !downloading
         engineCancelBtn.isHidden = !downloading
@@ -969,6 +1020,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     private func verifyChatModel() {
         chatModelRow.isHidden = false
+        llmStatusRow.isHidden = false
         llmStatusIcon.isHidden = true
         llmStatusLabel.stringValue = L("settings.vocab.llm.checking")
         llmSpinner.startAnimation(nil)
@@ -1019,6 +1071,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         llmStatusIcon.isHidden = true
         llmStatusLabel.stringValue = ""
         chatModelRow.isHidden = true
+        llmStatusRow.isHidden = true
     }
 
     // MARK: - Сброс настроек (ключ, история и аудио не трогаются)

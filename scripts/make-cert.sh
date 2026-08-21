@@ -45,3 +45,12 @@ security import "$TMP/cert.p12" -k "$HOME/Library/Keychains/login.keychain-db" -
 
 echo "Готово. Идентичность для подписи:"
 security find-identity -p codesigning | grep "$IDENTITY"
+
+# Без этого codesign будет спрашивать пароль от связки при КАЖДОЙ сборке, даже когда в
+# Access Control стоит «разрешить всем»: у ключа есть ещё внутренний partition list, которого
+# в Keychain Access не видно, и созданный из скрипта ключ получает его пустым.
+echo "→ Разрешаю системным инструментам пользоваться ключом без подтверждения…"
+security set-key-partition-list -S apple-tool:,apple: -s -l "$CN" \
+    ~/Library/Keychains/login.keychain-db >/dev/null 2>&1 \
+    && echo "  готово — codesign больше не будет спрашивать пароль" \
+    || echo "  ⚠ не удалось; выполни вручную: security set-key-partition-list -S apple-tool:,apple: -s -l \"$CN\" ~/Library/Keychains/login.keychain-db"
