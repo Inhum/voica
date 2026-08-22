@@ -26,6 +26,11 @@ All notable changes to this project are documented here. The format is based on
   recovered. The decoder trims its output today, which is why nobody ever hit it; the guard now
   sits where the break happens instead of where luck holds.
 
+- **The "Active model" line no longer names a model you did not pick.** The cloud wording had
+  `whisper-large-v3-turbo` baked into the translated string, so it kept claiming turbo while the
+  setting said `whisper-large-v3`. It now reads the setting, and it updates the moment you change
+  the model rather than at the next opening of Settings.
+
 ### Changed
 - **Terms written in plain Latin are matched a little more freely** — letter similarity of 0.5
   instead of 0.6, on top of the exact consonant skeleton that was always required. A live miss

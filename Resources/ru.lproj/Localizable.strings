@@ -186,7 +186,7 @@
 "settings.engine.cloud" = "Облако (Groq)";
 "settings.engine.local" = "Локально (офлайн)";
 "settings.engine.hint" = "Локальный движок работает целиком на этом Маке: не нужны ни интернет, ни ключ, пунктуация — из коробки. Особенности: английские слова могут записаться кириллицей, а словарь-подсказка при распознавании работает только с облаком. Термины при этом всё равно исправляются правилами — без ключа и сети, и пользы от них тут больше всего. Разовая загрузка модели — около 400 МБ.";
-"settings.engine.status.cloudActive" = "Работает модель: whisper-large-v3-turbo (облако Groq)";
+"settings.engine.status.cloudActive" = "Работает модель: %@ (облако Groq)";
 "settings.engine.status.localActive" = "Работает модель: GigaAM v3 — на этом Маке";
 "settings.engine.status.missing" = "Модель ещё не скачана (~400 МБ)";
 "settings.engine.status.downloading" = "Скачивание модели… %d%%";

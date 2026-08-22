@@ -188,7 +188,7 @@
 "settings.engine.cloud" = "Cloud (Groq)";
 "settings.engine.local" = "Local (offline)";
 "settings.engine.hint" = "The local engine runs entirely on this Mac: no internet or API key needed, punctuation included. Trade-offs: English words may come out in Cyrillic, and the vocabulary hint during recognition only works with the cloud engine. Terms are still fixed by rules — no key, no network — and that is where the rules help most. One-time model download: about 400 MB.";
-"settings.engine.status.cloudActive" = "Active model: whisper-large-v3-turbo (Groq cloud)";
+"settings.engine.status.cloudActive" = "Active model: %@ (Groq cloud)";
 "settings.engine.status.localActive" = "Active model: GigaAM v3 — runs on this Mac";
 "settings.engine.status.missing" = "Model not downloaded yet (~400 MB)";
 "settings.engine.status.downloading" = "Downloading model… %d%%";

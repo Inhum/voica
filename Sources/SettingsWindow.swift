@@ -827,6 +827,9 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     @objc private func sttModelChanged() {
         Prefs.sttModel = (sttModelPopup.selectedItem?.representedObject as? String) ?? GroqClient.defaultSTTModel
+        // Строка «Работает модель…» живёт на вкладке General, а выбор — здесь; без обновления
+        // она показывала бы прежнюю модель до следующего открытия настроек.
+        refreshEngineUI()
     }
 
     @objc private func sttLanguageChanged() {
@@ -972,7 +975,11 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
             engineStatusLabel.stringValue = L("settings.engine.status.missing")
             setStatusIcon(engineStatusIcon, .neutral)
         } else {
-            engineStatusLabel.stringValue = L("settings.engine.status.cloudActive")
+            // ⚠️ Имя модели ПОДСТАВЛЯЕТСЯ, а не зашито в строку. Зашитое врало: строка называла
+            // whisper-large-v3-turbo, когда в настройках выбран whisper-large-v3, — поймано на
+            // скриншоте пользователя. Строка про активную модель обязана читать настройку.
+            engineStatusLabel.stringValue = String(format: L("settings.engine.status.cloudActive"),
+                                                   Prefs.sttModel)
             setStatusIcon(engineStatusIcon, .success)
         }
     }
