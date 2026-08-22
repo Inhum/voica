@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [0.9.18] — unreleased — Text cleanup follows what was actually said
+## [0.9.18] — 2026-08-22 — Text cleanup follows what was actually said
 
 ### Fixed
 - **A filler in the middle of the text no longer leaves the next sentence in lower case.**
