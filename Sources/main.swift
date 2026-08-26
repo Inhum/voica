@@ -610,7 +610,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case .failure(let err):
                     self.latestUpdate = nil
                     self.updateItem.title = L("menu.checkUpdates")
-                    if manual { self.alert(L("update.error.title"), err.localizedDescription) }
+                    if manual {
+                        self.alert(L("update.error.title"),
+                                   HTTP.userMessage(err, url: Updater.releasesAPI))
+                    }
                 }
             }
         }

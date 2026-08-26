@@ -628,6 +628,15 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 11)
         label.textColor = .secondaryLabelColor
+        // ⚠️ Длинный текст ошибки НЕ должен раздвигать окно. Поймано живой проверкой: ошибка
+        // прокси в About растянула окно настроек в полтора раза. Ограничение ширины плюс
+        // перенос по словам — так же, как у статуса ИИ-модели, где это уже было сделано.
+        label.maximumNumberOfLines = 0
+        label.cell?.wraps = true
+        label.cell?.isScrollable = false
+        label.preferredMaxLayoutWidth = 260
+        label.widthAnchor.constraint(lessThanOrEqualToConstant: 260).isActive = true
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return label
     }
 
@@ -956,7 +965,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
                     self.updateStatusLabel.stringValue = L("about.upToDate", appVersion)
                 case .failure(let err):
                     self.updateStatusLabel.textColor = .systemOrange
-                    self.updateStatusLabel.stringValue = L("about.checkFailed", err.localizedDescription)
+                    self.updateStatusLabel.stringValue = L("about.checkFailed",
+                                                          HTTP.userMessage(err, url: Updater.releasesAPI))
                 }
             }
         }

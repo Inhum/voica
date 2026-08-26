@@ -89,7 +89,7 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
             try Self.install(zip: tmp)
             finish(.success)
         } catch {
-            finish(.failure(error.localizedDescription))
+            finish(.failure(HTTP.userMessage(error, url: Self.downloadURL)))
         }
     }
 
@@ -98,7 +98,7 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
         let cancelled = (error as NSError).code == NSURLErrorCancelled
         if cancelled { return finish(.cancelled) }
         NSLog("Voica: загрузка модели не удалась — \(error.localizedDescription), прокси: \(HTTP.proxyDescription(for: Self.downloadURL))")
-        finish(.failure(HTTP.isProxyFailure(error) ? HTTP.proxyFailureMessage(for: Self.downloadURL) : error.localizedDescription))
+        finish(.failure(HTTP.userMessage(error, url: Self.downloadURL)))
     }
 
     /// Прокси спрашивает пароль — отвечаем тем, что знает система (§9.5).

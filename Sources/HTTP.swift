@@ -144,6 +144,14 @@ enum HTTP {
         L("err.proxyFailed", proxyDescription(for: url))
     }
 
+    /// ⚠️ **Единственная точка превращения сетевой ошибки в текст для человека.** Общая сессия
+    /// без общего текста ошибки бесполезна: живая проверка показала, что кнопка Test и проверка
+    /// обновлений показывали сырое «kCFErrorDomainCFNetwork error 310», хотя тот же случай в
+    /// диктовке уже назывался прокси по имени. Каждый новый сетевой вызов обязан звать это.
+    static func userMessage(_ error: Error, url: URL) -> String {
+        isProxyFailure(error) ? proxyFailureMessage(for: url) : error.localizedDescription
+    }
+
     /// HTTP-код 407 — тот же случай, но пришедший ответом, а не ошибкой.
     static let proxyAuthStatusCode = 407
 }

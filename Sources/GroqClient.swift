@@ -87,7 +87,7 @@ enum GroqClient {
                 // Прокси-аутентификация приезжает обычной сетевой ошибкой — распознаём её
                 // и пишем в лог, какой прокси выбрала система (§9.5).
                 NSLog("Voica: запрос к Groq не удался — \(err.localizedDescription), прокси: \(HTTP.proxyDescription(for: Self.endpoint))")
-                let msg = HTTP.isProxyFailure(err) ? HTTP.proxyFailureMessage(for: Self.endpoint) : err.localizedDescription
+                let msg = HTTP.userMessage(err, url: Self.endpoint)
                 return completion(.failure(.network(msg)))
             }
             guard let http = resp as? HTTPURLResponse, let data = data else {
@@ -370,7 +370,7 @@ enum GroqClient {
         req.httpBody = body
         req.timeoutInterval = 15
         HTTP.session.dataTask(with: req) { _, resp, err in
-            if let err = err { return completion(.error(err.localizedDescription)) }
+            if let err = err { return completion(.error(HTTP.userMessage(err, url: chatEndpoint))) }
             guard let http = resp as? HTTPURLResponse else { return completion(.error(L("groq.validate.noResponse"))) }
             switch http.statusCode {
             case 200:  completion(.available(model))
@@ -389,7 +389,7 @@ enum GroqClient {
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 20
         HTTP.session.dataTask(with: req) { _, resp, err in
-            if let err = err { return completion(err.localizedDescription) }
+            if let err = err { return completion(HTTP.userMessage(err, url: modelsEndpoint)) }
             guard let http = resp as? HTTPURLResponse else { return completion(L("groq.validate.noResponse")) }
             switch http.statusCode {
             case 200:  completion(nil)

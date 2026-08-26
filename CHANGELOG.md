@@ -17,7 +17,10 @@ All notable changes to this project are documented here. The format is based on
 - **A Network tab in Settings**, before About, with a "Use the system proxy" switch (on by
   default). Turning it off makes requests go straight out, ignoring the system settings — a
   proxy configured wrongly gets in the way as often as a missing one helps.
-- **A proxy failure now says so, and names the proxy**, instead of a generic network error.
+- **A proxy failure now says so, and names the proxy**, instead of a generic network error —
+  everywhere it can surface: dictation, the key's Test button, the update check and the model
+  download. The Network tab also shows which proxy the app is actually using, so "did my setting
+  take effect?" has an answer on screen rather than in a log.
   The log records which proxy the system picked for the address, because without it a diagnosis
   in someone else's network turns into an exchange of letters.
 
