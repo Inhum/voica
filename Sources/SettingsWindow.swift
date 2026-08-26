@@ -42,6 +42,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var doubleTapToggle: NSButton!
     private var fillersToggle: NSButton!
     private var quotesToggle: NSButton!
+    private var proxyToggle: NSButton!
+    private var engineDownloadBtn: NSButton!
     private var llmStatusRow: NSStackView!
     private var termRulesToggle: NSButton!
 
@@ -101,6 +103,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         addTab(L("settings.tab.dictation"), symbol: "mic",                   view: buildDictationTab())
         addTab(L("settings.tab.vocab"),     symbol: "character.book.closed", view: buildVocabularyTab())
         addTab(L("settings.tab.data"),      symbol: "internaldrive",         view: buildDataTab())
+        addTab(L("settings.tab.network"),   symbol: "network",               view: buildNetworkTab())
         addTab(L("settings.tab.about"),     symbol: "info.circle",           view: buildAboutTab())
 
         window?.contentViewController = tabs
@@ -170,9 +173,17 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
                                    action: #selector(cancelModelDownload))
         engineCancelBtn.controlSize = .small
         engineCancelBtn.isHidden = true
+        // ⚠️ Скачивание больше НЕ стартует само при выборе локального движка (§9.5): в сети
+        // с прокси-авторизацией это мгновенный 407, которого человек не просил. Теперь это
+        // явное действие, и видно, что сейчас начнётся загрузка на сотни мегабайт.
+        engineDownloadBtn = NSButton(title: L("settings.engine.download"), target: self,
+                                     action: #selector(startModelDownload))
+        engineDownloadBtn.controlSize = .small
+        engineDownloadBtn.isHidden = true
 
         let engineStatusRow = NSStackView(views: [engineStatusIcon, engineStatusLabel,
-                                                  engineProgress, engineCancelBtn])
+                                                  engineProgress, engineCancelBtn,
+                                                  engineDownloadBtn])
         engineStatusRow.spacing = 6
         engineStatusRow.alignment = .centerY
         stack.addArrangedSubview(engineStatusRow)
@@ -401,6 +412,18 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     }
 
     // MARK: - Вкладка Data (аудио + удаление)
+
+    /// Вкладка Network (§11.4). Пока одна настройка — системный прокси; ручной прокси, если
+    /// понадобится, ляжет сюда же (§9.5).
+    private func buildNetworkTab() -> NSView {
+        let (container, stack) = tabContainer()
+        stack.addArrangedSubview(header(L("settings.network.header")))
+        proxyToggle = NSButton(checkboxWithTitle: L("settings.proxy.toggle"),
+                               target: self, action: #selector(proxyChanged))
+        stack.addArrangedSubview(proxyToggle)
+        stack.addArrangedSubview(makeHint(L("settings.proxy.hint")))
+        return container
+    }
 
     private func buildDataTab() -> NSView {
         let (container, stack) = tabContainer()
@@ -705,6 +728,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         selectByRepresented(sttLanguagePopup, Prefs.sttLanguage)
         recordingHUDToggle.state = Prefs.recordingHUD ? .on : .off
         doubleTapToggle.state = Prefs.toggleDoubleTap ? .on : .off
+        proxyToggle.state = Prefs.useSystemProxy ? .on : .off
         fillersToggle.state = Prefs.stripFillers ? .on : .off
         quotesToggle.state = Prefs.fixQuotes ? .on : .off
         termRulesToggle.state = Prefs.fixTermsByRules ? .on : .off
@@ -923,14 +947,24 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     @objc private func engineChanged() {
         let local = (engineControl.selectedSegment == 1)
         Prefs.sttEngine = local ? "local" : "cloud"
-        if local, !LocalSTT.isModelAvailable, !ModelDownloader.shared.isDownloading {
-            engineProgress.doubleValue = 0
-            ModelDownloader.shared.start()
-        }
         if !local, ModelDownloader.shared.isDownloading {
             ModelDownloader.shared.cancel()   // передумали — не тратим трафик
         }
         refreshEngineUI()
+    }
+
+    @objc private func startModelDownload() {
+        guard !ModelDownloader.shared.isDownloading, !LocalSTT.isModelAvailable else { return }
+        engineProgress.doubleValue = 0
+        ModelDownloader.shared.start()
+        refreshEngineUI()
+    }
+
+    @objc private func proxyChanged() {
+        Prefs.useSystemProxy = (proxyToggle.state == .on)
+        // Конфигурация читается при создании сессии — без пересоздания настройка не подействует
+        // до перезапуска приложения.
+        HTTP.reloadSession()
     }
 
     @objc private func cancelModelDownload() {
@@ -963,6 +997,9 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         let downloading = ModelDownloader.shared.isDownloading
         engineProgress.isHidden = !downloading
         engineCancelBtn.isHidden = !downloading
+        // «Скачать» видна ровно там, где модели нет и она нужна.
+        engineDownloadBtn?.isHidden = !(Prefs.sttEngine == "local" && !LocalSTT.isModelAvailable
+                                        && !downloading)
         // Статус называет РАБОТАЮЩУЮ модель, а не только факт установки локальной.
         if downloading {
             engineStatusLabel.stringValue =

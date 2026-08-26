@@ -25,6 +25,7 @@ enum Prefs {
         static let fixQuotes     = "fixQuotes"       // чинить кавычки (ёлочки, непарные)
         static let fixTermsByRules = "fixTermsByRules" // исправлять термины правилами (§6.2)
         static let toggleDoubleTap = "toggleDoubleTap" // Toggle: старт двойным тапом (иначе одиночным)
+        static let useSystemProxy = "useSystemProxy"   // ходить через системный прокси (§9.5)
     }
 
     /// Модели chat-completions, которые Groq снял с раздачи (404). Сохранённый выбор такой
@@ -171,13 +172,21 @@ enum Prefs {
         set { d.set(newValue, forKey: Key.toggleDoubleTap) }
     }
 
+    /// Использовать системный прокси (§9.5). По умолчанию ДА — это и так поведение
+    /// `URLSession`, настройка нужна ради обратного: криво прописанный в системе прокси
+    /// мешает не реже, чем помогает, и человеку нужен способ пойти напрямую.
+    static var useSystemProxy: Bool {
+        get { d.object(forKey: Key.useSystemProxy) == nil ? true : d.bool(forKey: Key.useSystemProxy) }
+        set { d.set(newValue, forKey: Key.useSystemProxy) }
+    }
+
     /// Сброс всех настроек к значениям по умолчанию (для Delete all data).
     static func reset() {
         [Key.retentionDays, Key.storeAudio, Key.pttKeyCode, Key.dictationMode, Key.outputMode,
          Key.checkUpdates, Key.lastUpdateCheck, Key.vocabulary, Key.llmPostProcess, Key.sttEngine,
          Key.chatModel, Key.resolvedChatModel, Key.sttModel, Key.sttLanguage,
          Key.recordingHUD, Key.toggleDoubleTap, Key.stripFillers,
-         Key.fixQuotes, Key.fixTermsByRules]
+         Key.fixQuotes, Key.fixTermsByRules, Key.useSystemProxy]
             .forEach { d.removeObject(forKey: $0) }
     }
 }

@@ -43,7 +43,9 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
     func start() {
         guard !isDownloading else { return }
         isDownloading = true
-        let s = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        // Конфигурация общая с остальными обращениями (§9.5): настройка прокси обязана
+        // действовать и здесь — именно скачивание модели упирается в прокси чаще всего.
+        let s = URLSession(configuration: HTTP.configuration(), delegate: self, delegateQueue: nil)
         session = s
         task = s.downloadTask(with: Self.downloadURL)
         task?.resume()
@@ -72,8 +74,12 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
         do {
             if let http = downloadTask.response as? HTTPURLResponse,
                !(200..<300).contains(http.statusCode) {
-                throw NSError(domain: "Voica", code: 1,
-                              userInfo: [NSLocalizedDescriptionKey: L("model.err.http", http.statusCode)])
+                // 407 — не «сервер вернул код», а «прокси требует авторизации»: лечится
+                // в системных настройках, и человеку надо сказать именно это (§9.5).
+                let msg = http.statusCode == HTTP.proxyAuthStatusCode
+                    ? HTTP.proxyFailureMessage(for: Self.downloadURL) : L("model.err.http", http.statusCode)
+                NSLog("Voica: загрузка модели — HTTP \(http.statusCode), прокси: \(HTTP.proxyDescription(for: Self.downloadURL))")
+                throw NSError(domain: "Voica", code: 1, userInfo: [NSLocalizedDescriptionKey: msg])
             }
             try FileManager.default.moveItem(at: location, to: tmp)
             guard try Self.sha256Hex(of: tmp) == Self.expectedSHA256 else {
@@ -90,7 +96,17 @@ final class ModelDownloader: NSObject, URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let error else { return }   // успех уже обработан в didFinishDownloadingTo
         let cancelled = (error as NSError).code == NSURLErrorCancelled
-        finish(cancelled ? .cancelled : .failure(error.localizedDescription))
+        if cancelled { return finish(.cancelled) }
+        NSLog("Voica: загрузка модели не удалась — \(error.localizedDescription), прокси: \(HTTP.proxyDescription(for: Self.downloadURL))")
+        finish(.failure(HTTP.isProxyFailure(error) ? HTTP.proxyFailureMessage(for: Self.downloadURL) : error.localizedDescription))
+    }
+
+    /// Прокси спрашивает пароль — отвечаем тем, что знает система (§9.5).
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    didReceive challenge: URLAuthenticationChallenge,
+                    completionHandler: @escaping (URLSession.AuthChallengeDisposition,
+                                                  URLCredential?) -> Void) {
+        HTTP.handleChallenge(challenge, completion: completionHandler)
     }
 
     private func finish(_ outcome: Outcome) {

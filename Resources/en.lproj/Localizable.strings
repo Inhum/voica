@@ -69,6 +69,12 @@
 
 /* Settings */
 "settings.title" = "Voica — Settings";
+"err.proxyFailed" = "Could not get through the proxy (%@). Check the proxy address and its password in System Settings → Network → Proxies — the app takes them from there.";
+"settings.tab.network" = "Network";
+"settings.network.header" = "Proxy";
+"settings.proxy.toggle" = "Use the system proxy";
+"settings.proxy.hint" = "The app reaches the network the same way Safari does: through the proxy set in System Settings → Network. The system stores the proxy password; there is nothing to enter here. Turn this off if a proxy is configured but gets in the way — requests will then go directly.";
+"settings.engine.download" = "Download model";
 "settings.tab.general" = "General";
 "settings.tab.dictation" = "Dictation";
 "settings.tab.vocab" = "Vocabulary";

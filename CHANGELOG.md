@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Voica works behind a corporate proxy.** The app already followed the system proxy — that
+  part never needed code. What was missing is authentication: the proxy answers `407`, nothing
+  supplies credentials, and from the outside it looks like the app cannot do proxies at all.
+  All three network calls — Groq, the model download and the update check — now go through one
+  place that can answer the proxy's challenge with the credentials the system already holds.
+  Nothing to type in Voica: macOS keeps the proxy password in System Settings → Network →
+  Proxies, and asks for it there itself.
+- **A Network tab in Settings**, before About, with a "Use the system proxy" switch (on by
+  default). Turning it off makes requests go straight out, ignoring the system settings — a
+  proxy configured wrongly gets in the way as often as a missing one helps.
+- **A proxy failure now says so, and names the proxy**, instead of a generic network error.
+  The log records which proxy the system picked for the address, because without it a diagnosis
+  in someone else's network turns into an exchange of letters.
+
+### Changed
+- **Switching to the local engine no longer starts a 400 MB download on its own.** There is a
+  "Download model" button instead. In a network where the proxy wants authentication, the old
+  behaviour meant an instant failure nobody asked for.
+
 ## [0.9.18] — 2026-08-22 — Text cleanup follows what was actually said
 
 ### Fixed

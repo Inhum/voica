@@ -27,6 +27,9 @@ enum GroqError: Error, LocalizedError {
         case .http(let code, let msg):
             switch code {
             case 401: return L("groq.err.http401")
+            // 407 приходит НЕ от Groq, а от корпоративного прокси по дороге (§9.5).
+            // Называть его «Groq вернул 407» — отправлять человека чинить не то.
+            case HTTP.proxyAuthStatusCode: return HTTP.proxyFailureMessage(for: GroqClient.endpoint)
             case 413: return L("groq.err.http413")
             case 429: return L("groq.err.http429")
             default:  return L("groq.err.httpOther", code, Self.shorten(msg))
@@ -79,8 +82,14 @@ enum GroqClient {
                             prompt: promptField(from: Prefs.vocabulary))
         req.timeoutInterval = 120
 
-        URLSession.shared.dataTask(with: req) { data, resp, err in
-            if let err = err { return completion(.failure(.network(err.localizedDescription))) }
+        HTTP.session.dataTask(with: req) { data, resp, err in
+            if let err = err {
+                // Прокси-аутентификация приезжает обычной сетевой ошибкой — распознаём её
+                // и пишем в лог, какой прокси выбрала система (§9.5).
+                NSLog("Voica: запрос к Groq не удался — \(err.localizedDescription), прокси: \(HTTP.proxyDescription(for: Self.endpoint))")
+                let msg = HTTP.isProxyFailure(err) ? HTTP.proxyFailureMessage(for: Self.endpoint) : err.localizedDescription
+                return completion(.failure(.network(msg)))
+            }
             guard let http = resp as? HTTPURLResponse, let data = data else {
                 return completion(.failure(.network(L("groq.validate.noResponse"))))
             }
@@ -158,7 +167,7 @@ enum GroqClient {
         var req = URLRequest(url: modelsEndpoint)
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 20
-        URLSession.shared.dataTask(with: req) { data, resp, err in
+        HTTP.session.dataTask(with: req) { data, resp, err in
             guard err == nil,
                   let http = resp as? HTTPURLResponse, http.statusCode == 200,
                   let data = data,
@@ -269,7 +278,7 @@ enum GroqClient {
         req.httpBody = body
         req.timeoutInterval = 20
 
-        URLSession.shared.dataTask(with: req) { data, resp, err in
+        HTTP.session.dataTask(with: req) { data, resp, err in
             if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
                 healChatModelInBackground()   // модель убрали — чиним к следующей диктовке
             }
@@ -360,7 +369,7 @@ enum GroqClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
         req.timeoutInterval = 15
-        URLSession.shared.dataTask(with: req) { _, resp, err in
+        HTTP.session.dataTask(with: req) { _, resp, err in
             if let err = err { return completion(.error(err.localizedDescription)) }
             guard let http = resp as? HTTPURLResponse else { return completion(.error(L("groq.validate.noResponse"))) }
             switch http.statusCode {
@@ -379,7 +388,7 @@ enum GroqClient {
         var req = URLRequest(url: URL(string: "https://api.groq.com/openai/v1/models")!)
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 20
-        URLSession.shared.dataTask(with: req) { _, resp, err in
+        HTTP.session.dataTask(with: req) { _, resp, err in
             if let err = err { return completion(err.localizedDescription) }
             guard let http = resp as? HTTPURLResponse else { return completion(L("groq.validate.noResponse")) }
             switch http.statusCode {

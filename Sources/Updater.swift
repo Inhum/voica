@@ -27,8 +27,13 @@ enum Updater {
         req.setValue("Voica", forHTTPHeaderField: "User-Agent")   // GitHub API отклоняет запрос без User-Agent
         req.timeoutInterval = 20
 
-        URLSession.shared.dataTask(with: req) { data, resp, err in
-            if let err = err { return completion(.failure(err)) }
+        HTTP.session.dataTask(with: req) { data, resp, err in
+            if let err = err {
+                // Фоновая проверка ошибку не показывает (§10) — но в лог она обязана попасть,
+                // иначе в закрытом контуре причина «обновления не проверяются» не находится.
+                NSLog("Voica: проверка обновлений не удалась — \(err.localizedDescription), прокси: \(HTTP.proxyDescription(for: releasesAPI))")
+                return completion(.failure(err))
+            }
             guard let http = resp as? HTTPURLResponse, let data = data else {
                 return completion(.failure(UpdateError.noResponse))
             }

@@ -591,6 +591,35 @@ enum SelfTest {
 
         // Движок распознавания — настройка и загрузчик модели
         let savedEngine = Prefs.sttEngine
+        // Сеть и прокси (§9.5). Проверяется то, что можно проверить без сети: разбор
+        // переопределения, применение настройки к конфигурации и распознавание ошибок прокси.
+        check("prefs useSystemProxy default on", Prefs.useSystemProxy)
+        do {
+            let saved = Prefs.useSystemProxy
+            Prefs.useSystemProxy = false
+            // Выключенная настройка = пустой словарь прокси, то есть «идти напрямую».
+            let cfg = HTTP.configuration(URLSessionConfiguration.ephemeral)
+            check("proxy off means direct", (cfg.connectionProxyDictionary ?? [:]).isEmpty
+                  && cfg.connectionProxyDictionary != nil)
+            Prefs.useSystemProxy = true
+            let on = HTTP.configuration(URLSessionConfiguration.ephemeral)
+            check("proxy on leaves system settings alone", on.connectionProxyDictionary == nil)
+            Prefs.useSystemProxy = saved
+        }
+        // ⚠️ Домен ошибки прокси — kCFErrorDomainCFNetwork, а НЕ NSURLErrorDomain. Первая
+        // редакция смотрела не туда и не ловила ни один живой случай; поймано стендом
+        // с поддельным прокси, заморожено здесь.
+        let cfProxyErr = NSError(domain: kCFErrorDomainCFNetwork as String, code: 310)
+        check("proxy failure detected in CFNetwork domain", HTTP.isProxyFailure(cfProxyErr))
+        check("plain offline error is not a proxy failure",
+              !HTTP.isProxyFailure(NSError(domain: NSURLErrorDomain,
+                                           code: NSURLErrorNotConnectedToInternet)))
+        check("auth-required error is a proxy failure",
+              HTTP.isProxyFailure(NSError(domain: NSURLErrorDomain,
+                                          code: NSURLErrorUserAuthenticationRequired)))
+        check("proxy message names the proxy and is localised",
+              !HTTP.proxyFailureMessage(for: GroqClient.endpoint).hasPrefix("err."))
+
         check("prefs sttEngine default", UserDefaults.standard.string(forKey: "sttEngine") != nil
               || Prefs.sttEngine == "cloud")
         Prefs.sttEngine = "local"
