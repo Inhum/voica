@@ -21,6 +21,13 @@ All notable changes to this project are documented here. The format is based on
   The log records which proxy the system picked for the address, because without it a diagnosis
   in someone else's network turns into an exchange of letters.
 
+### Fixed
+- **"Local (offline)" no longer sends a dictation to the cloud behind your back.** With the
+  local engine selected but no model on disk, the recording went to Groq and the switch still
+  said offline. Standing in for a missing model with the cloud is fine only while the model is
+  downloading; otherwise the app now says the model is not installed and sends nothing. Found by
+  deleting the model and dictating — the history entry said `whisper-large-v3`.
+
 ### Changed
 - **Switching to the local engine no longer starts a 400 MB download on its own.** There is a
   "Download model" button instead. In a network where the proxy wants authentication, the old

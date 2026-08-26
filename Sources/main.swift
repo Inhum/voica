@@ -293,8 +293,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         state = .transcribing
-        if Prefs.sttEngine == "local", LocalSTT.isModelAvailable { transcribeLocally(rec: rec) }
-        else { transcribeViaCloud(rec: rec) }
+        route(rec: rec)
     }
 
     private func stopDictation() {
@@ -306,13 +305,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         state = .transcribing
-        // Локальный движок — если он выбран и модель скачана. Пока модель качается,
-        // работаем через облако (решение UX: переключение «вступает» после загрузки).
-        if Prefs.sttEngine == "local", LocalSTT.isModelAvailable {
-            transcribeLocally(rec: rec)
-        } else {
-            transcribeViaCloud(rec: rec)
-        }
+        route(rec: rec)
+    }
+
+    /// Куда отправить запись: локальный движок, облако или никуда.
+    ///
+    /// ⚠️ **Выбран локальный движок, а модели нет — В ОБЛАКО НЕ ОТПРАВЛЯЕМ.** «Локально
+    /// (офлайн)» это обещание приватности, и тихо нарушить его хуже, чем отказать: человек
+    /// видит на переключателе «офлайн», а звук уезжает в Groq. Поймано живой проверкой —
+    /// после удаления модели диктовка ушла в облако, и в истории осталось `whisper-large-v3`.
+    ///
+    /// Единственное исключение — **пока модель качается**: подмена временная, о ней сказано
+    /// в §2.5, и человек только что сам нажал «Скачать».
+    private func route(rec: (url: URL, duration: TimeInterval)) {
+        guard Prefs.sttEngine == "local" else { return transcribeViaCloud(rec: rec) }
+        if LocalSTT.isModelAvailable { return transcribeLocally(rec: rec) }
+        if ModelDownloader.shared.isDownloading { return transcribeViaCloud(rec: rec) }
+        state = .idle
+        try? FileManager.default.removeItem(at: rec.url)
+        alert(L("alert.noModel.title"), L("alert.noModel.msg"))
     }
 
     private func transcribeViaCloud(rec: (url: URL, duration: TimeInterval)) {
