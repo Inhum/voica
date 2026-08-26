@@ -49,8 +49,11 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
   the box, excellent Russian; the Core ML conversion is ours and is published as
   [inhum/gigaam-v3-coreml](https://huggingface.co/inhum/gigaam-v3-coreml)). One-time ~400 MB
   model download with a progress bar; the model
-  can be deleted anytime in Settings → Data. If the cloud is unreachable, Voica automatically
-  falls back to the local model (with a notification). Trade-offs: Latin words can come out as a
+  can be cancelled while it runs, and deleted in Settings → Data — with a question telling you
+  how much space it frees. If the cloud is unreachable and the model is installed, Voica
+  recognizes locally instead (with a notification). There is no fallback the other way:
+  **once you pick *Local (offline)*, no audio goes to the cloud under any circumstances.**
+  With no model, dictation does not start — Voica says what is missing and where to fix it. Trade-offs: Latin words can come out as a
   mix of alphabets (`Dпсик` instead of `DeepSeek`) — that is what the vocabulary fixes, see
   below. The recognition hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
@@ -69,14 +72,27 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
 - **Vocabulary** — list the terms recognition mangles (names, jargon, anglicisms). It works in
   three layers:
   - **Rules, right on your Mac.** Garbled spellings are pulled back to the ones you listed —
-    no key, no internet, both engines — and it switches itself on whenever the vocabulary
-    isn't empty. This is what makes the local engine genuinely self-contained.
+    no key, no internet, both engines. This is what makes the local engine genuinely
+    self-contained. On by default; the checkbox sits right above the AI switch.
   - **A recognition hint** — cloud only: the list goes to Whisper and biases what it hears.
     Soft limit ~800 characters (the model only reads the last ~224 tokens; a live counter in
     Settings shows the budget), so keep the terms that matter at the end of the list.
   - **An AI pass** (Groq LLM), optional — handles what rules cannot: grammatical case and
     badly garbled terms. Needs the key and internet; if the request fails you keep the text
     the rules produced, so it never makes things worse.
+- **Text clean-up** (Settings → Dictation, the *Text clean-up* section; all on by default, each
+  switchable on its own):
+  - **Filler sounds** — drawn-out "uh", "um", "hmm" are removed. The rule looks at the *shape* of
+    the word rather than a list of spellings, so it catches forms nobody listed. A real word that
+    was merely drawn out is straightened rather than dropped. Single-letter conjunctions and
+    prepositions are never touched. Turn it off if you transcribe speech verbatim.
+  - **Quotes** — straight quotes become proper guillemets based on where they sit, the space
+    after a colon comes back, and a quote left without its pair is removed. English text is
+    left alone.
+- **Works behind a proxy** — if your network only lets you out through a proxy, Voica uses the
+  system settings the way Safari does; macOS keeps the proxy password and asks for it itself, so
+  there is nothing to type into Voica. The *Network* tab shows which route requests take, and
+  lets you go straight out if a configured proxy is in the way instead.
 - **Localized UI** — English and Russian, follows the system language.
 - **Update checks** — optionally checks GitHub for a newer version on launch and points you to
   the release page. Never downloads or installs anything by itself; can be turned off.
