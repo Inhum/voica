@@ -153,6 +153,15 @@ enum SelfTest {
         check("update not newer older", !Updater.isNewer("0.3.9", than: "0.4.0"))
         check("update double-digit", Updater.isNewer("0.10.0", than: "0.9.0"))
         check("update normalize v-prefix", Updater.normalize("v0.5.0") == "0.5.0")
+        // Кандидаты в релиз (§13). Суффикс обязан отбрасываться при разборе, иначе «19-rc»
+        // становится нулём и приложение предлагает откатиться на предыдущий выпуск.
+        check("rc suffix ignored in numbers", Updater.numbers("0.9.19-rc.1") == [0, 9, 19])
+        check("rc is older than its release", Updater.isNewer("0.9.19", than: "0.9.19-rc.1"))
+        check("release is not older than its rc", !Updater.isNewer("0.9.19-rc.1", than: "0.9.19"))
+        check("older release not offered to rc tester",
+              !Updater.isNewer("0.9.18", than: "0.9.19-rc.1"))
+        check("newer release offered to rc tester",
+              Updater.isNewer("0.10.0", than: "0.9.19-rc.1"))
 
         // Локальный движок: CTC-декодер (чистая логика)
         let dec = CTCDecoder(pieces: ["<unk>", "▁при", "вет", "▁мир"])   // blank = 4

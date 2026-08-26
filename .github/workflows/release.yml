@@ -62,6 +62,17 @@ jobs:
             exit 1
           fi
 
+      # ⚠️ Кандидат обязан ПОКАЗЫВАТЬ, что он кандидат: About читает версию из бандла, и без
+      # этого шага rc.1, rc.2 и финал выглядели бы одинаково — «Version 0.9.19». Тестировщик
+      # тогда не может ответить, что именно у него стоит, а ради этого кандидаты и заведены.
+      # Штампуем ПОСЛЕ сверки версии: сверка идёт по базовой части, здесь пишем полную.
+      - name: Кандидату — полную версию с суффиксом в About
+        if: github.ref_type == 'tag' && contains(github.ref_name, '-')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $TAG_VERSION" Resources/Info.plist
+          echo "About покажет: $TAG_VERSION"
+
       - name: Сборка, .dmg и самотест
         run: |
           ./scripts/package.sh
@@ -104,4 +115,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" $PRERELEASE \
             --title "$TITLE" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            "build/Voica-$BASE.dmg"
+            "build/Voica-$TAG_VERSION.dmg"
