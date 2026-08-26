@@ -352,30 +352,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func offerSetup(_ blocker: (title: String, msg: String)) {
         guard !isShowingSetupAlert else { return NSApp.activate(ignoringOtherApps: true) }
         isShowingSetupAlert = true
-        defer { isShowingSetupAlert = false }
-        // ⚠️ Повышаемся до обычного приложения ДО активации и до модального окна, а не после.
-        // Приложения-агента нет в списке Cmd+Tab, и активация в этом состоянии там не
-        // запоминается; повышение после неё уже ничего не исправляет — приложение впереди,
-        // повторная активация ничего не делает, отметки о недавнем использовании так и нет.
-        // Живой случай: предупреждение → «Перейти в настройки» → Cmd+Tab возвращал не Voica.
+        // ⚠️ Повышаемся до обычного приложения ДО активации, а не после. Приложения-агента нет
+        // в списке Cmd+Tab, и активация в этом состоянии там не запоминается; повышение после
+        // неё уже ничего не исправляет. Живой случай: предупреждение → «Перейти в настройки» →
+        // Cmd+Tab возвращал не Voica.
         let wasAccessory = NSApp.activationPolicy() != .regular
         if wasAccessory { setActivationPolicy(.regular, why: "показываем предупреждение") }
-        NSApp.activate(ignoringOtherApps: true)
-        let a = NSAlert()
-        a.messageText = blocker.title
-        a.informativeText = blocker.msg
-        a.addButton(withTitle: L("alert.noModel.open"))
-        a.addButton(withTitle: L("common.cancel"))
-        // Окно открываем СЛЕДУЮЩИМ витком цикла: модальная сессия к этому моменту полностью
-        // завершена, и активация не спорит с её разбором.
-        guard a.runModal() == .alertFirstButtonReturn else {
-            // Отказались — окна не будет, значит и обычным приложением быть незачем.
-            if wasAccessory, !hasVisibleMainWindow() {
-                setActivationPolicy(.accessory, why: "предупреждение закрыто без окна")
+
+        // ⚠️ А окно показываем СЛЕДУЮЩИМ витком цикла. Повышение не мгновенно: системе нужен
+        // виток, чтобы зарегистрировать приложение в Доке. Активация, поданная в тот же миг,
+        // теряется, и вместо окна начинает прыгать иконка в Доке — окно ждёт, пока по ней
+        // кликнут. Ровно это и вышло, когда повышение переехало вперёд.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            defer { self.isShowingSetupAlert = false }
+            NSApp.activate(ignoringOtherApps: true)
+            let a = NSAlert()
+            a.messageText = blocker.title
+            a.informativeText = blocker.msg
+            a.addButton(withTitle: L("alert.noModel.open"))
+            a.addButton(withTitle: L("common.cancel"))
+            guard a.runModal() == .alertFirstButtonReturn else {
+                // Отказались — окна не будет, значит и обычным приложением быть незачем.
+                if wasAccessory, !self.hasVisibleMainWindow() {
+                    self.setActivationPolicy(.accessory, why: "предупреждение закрыто без окна")
+                }
+                return
             }
-            return
+            DispatchQueue.main.async { self.settingsWindow.showGeneral() }
         }
-        DispatchQueue.main.async { [weak self] in self?.settingsWindow.showGeneral() }
     }
 
     /// Куда отправить запись: локальный движок, облако или никуда.
