@@ -112,7 +112,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func voicaWindowBecameKey(_ note: Notification) {
         guard (note.object as? NSWindow)?.identifier?.rawValue == "voica-main" else { return }
-        if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+        if NSApp.activationPolicy() != .regular {
+            setActivationPolicy(.regular, why: "окно стало ключевым")
+        }
+    }
+
+    /// Есть ли на экране хоть одно наше окно. От этого зависит, быть ли агентом.
+    private func hasVisibleMainWindow() -> Bool {
+        NSApp.windows.contains { $0.identifier?.rawValue == "voica-main" && $0.isVisible }
+    }
+
+    /// Смена режима приложения с записью в лог: место тонкое (порядок относительно активации
+    /// решает, попадёт ли приложение в Cmd+Tab), и без следа в логе разбирать это нечем.
+    private func setActivationPolicy(_ policy: NSApplication.ActivationPolicy, why: String) {
+        NSLog("Voica: режим приложения → \(policy == .regular ? "обычное" : "агент") (\(why))")
+        NSApp.setActivationPolicy(policy)
     }
 
     @objc private func voicaWindowWillClose(_ note: Notification) {
@@ -122,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let stillOpen = NSApp.windows.contains {
                 $0.identifier?.rawValue == "voica-main" && $0.isVisible && $0 !== closing
             }
-            if !stillOpen { NSApp.setActivationPolicy(.accessory) }
+            if !stillOpen { self.setActivationPolicy(.accessory, why: "последнее окно закрыто") }
         }
     }
 
@@ -339,6 +353,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !isShowingSetupAlert else { return NSApp.activate(ignoringOtherApps: true) }
         isShowingSetupAlert = true
         defer { isShowingSetupAlert = false }
+        // ⚠️ Повышаемся до обычного приложения ДО активации и до модального окна, а не после.
+        // Приложения-агента нет в списке Cmd+Tab, и активация в этом состоянии там не
+        // запоминается; повышение после неё уже ничего не исправляет — приложение впереди,
+        // повторная активация ничего не делает, отметки о недавнем использовании так и нет.
+        // Живой случай: предупреждение → «Перейти в настройки» → Cmd+Tab возвращал не Voica.
+        let wasAccessory = NSApp.activationPolicy() != .regular
+        if wasAccessory { setActivationPolicy(.regular, why: "показываем предупреждение") }
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
         a.messageText = blocker.title
@@ -347,7 +368,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         a.addButton(withTitle: L("common.cancel"))
         // Окно открываем СЛЕДУЮЩИМ витком цикла: модальная сессия к этому моменту полностью
         // завершена, и активация не спорит с её разбором.
-        guard a.runModal() == .alertFirstButtonReturn else { return }
+        guard a.runModal() == .alertFirstButtonReturn else {
+            // Отказались — окна не будет, значит и обычным приложением быть незачем.
+            if wasAccessory, !hasVisibleMainWindow() {
+                setActivationPolicy(.accessory, why: "предупреждение закрыто без окна")
+            }
+            return
+        }
         DispatchQueue.main.async { [weak self] in self?.settingsWindow.showGeneral() }
     }
 

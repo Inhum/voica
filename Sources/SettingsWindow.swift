@@ -43,6 +43,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private var fillersToggle: NSButton!
     private var quotesToggle: NSButton!
     private var proxyToggle: NSButton!
+    private var proxyStatusLabel: NSTextField!
     private var engineDownloadBtn: NSButton!
     private var llmStatusRow: NSStackView!
     private var termRulesToggle: NSButton!
@@ -421,6 +422,10 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         proxyToggle = NSButton(checkboxWithTitle: L("settings.proxy.toggle"),
                                target: self, action: #selector(proxyChanged))
         stack.addArrangedSubview(proxyToggle)
+        // ⚠️ Строка «что приложение использует на самом деле». Без неё вопрос «подействовала ли
+        // настройка?» отвечается только чтением лога — а в чужой сети это и есть главный вопрос.
+        proxyStatusLabel = makeHint("")
+        stack.addArrangedSubview(proxyStatusLabel)
         stack.addArrangedSubview(makeHint(L("settings.proxy.hint")))
         return container
     }
@@ -748,6 +753,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         recordingHUDToggle.state = Prefs.recordingHUD ? .on : .off
         doubleTapToggle.state = Prefs.toggleDoubleTap ? .on : .off
         proxyToggle.state = Prefs.useSystemProxy ? .on : .off
+        refreshProxyStatus()
         fillersToggle.state = Prefs.stripFillers ? .on : .off
         quotesToggle.state = Prefs.fixQuotes ? .on : .off
         termRulesToggle.state = Prefs.fixTermsByRules ? .on : .off
@@ -979,8 +985,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         refreshEngineUI()
     }
 
+    private func refreshProxyStatus() {
+        proxyStatusLabel?.stringValue = L("settings.proxy.current",
+                                          HTTP.proxyDescription(for: GroqClient.endpoint))
+    }
+
     @objc private func proxyChanged() {
         Prefs.useSystemProxy = (proxyToggle.state == .on)
+        refreshProxyStatus()
         // Конфигурация читается при создании сессии — без пересоздания настройка не подействует
         // до перезапуска приложения.
         HTTP.reloadSession()

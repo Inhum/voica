@@ -593,7 +593,15 @@ enum SelfTest {
         let savedEngine = Prefs.sttEngine
         // Сеть и прокси (§9.5). Проверяется то, что можно проверить без сети: разбор
         // переопределения, применение настройки к конфигурации и распознавание ошибок прокси.
-        check("prefs useSystemProxy default on", Prefs.useSystemProxy)
+        // ⚠️ Дефолт проверяем на ОТСУТСТВИИ ключа, а не на текущем значении: пользователь мог
+        // снять галочку, и тест начинал проверять его настройку вместо умолчания. Так и вышло —
+        // упал на живой машине после ручной проверки прокси.
+        do {
+            let saved = UserDefaults.standard.object(forKey: "useSystemProxy")
+            UserDefaults.standard.removeObject(forKey: "useSystemProxy")
+            check("prefs useSystemProxy defaults to on", Prefs.useSystemProxy)
+            if let saved { UserDefaults.standard.set(saved, forKey: "useSystemProxy") }
+        }
         do {
             let saved = Prefs.useSystemProxy
             Prefs.useSystemProxy = false
