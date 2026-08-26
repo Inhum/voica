@@ -179,6 +179,7 @@
 "deleteAll.mismatch.title" = "Phrase didn’t match";
 "deleteAll.mismatch.msg" = "Deletion cancelled. Nothing was changed.";
 "deleteAll.done.title" = "Done";
+"deleteAll.done.envKey" = "The saved key is gone, but the app still sees a key in the GROQ_API_KEY environment variable. That is a system setting and not the app's to change — remove the variable yourself if you no longer need the key.";
 "deleteAll.done.msg" = "All data deleted.";
 
 /* About */

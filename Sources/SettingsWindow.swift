@@ -182,9 +182,15 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         engineDownloadBtn.controlSize = .small
         engineDownloadBtn.isHidden = true
 
+        // ⚠️ Порядок и фиксированная ширина текста — не косметика. Строка состояния меняется
+        // ровно в тот момент, когда на соседнюю кнопку собираются нажать («Локальная модель не
+        // скачана (400 МБ)» → «Скачиваю модель… 22%»), и при плавающей ширине кнопка уезжает
+        // из-под курсора. Поэтому текст занимает своё место всегда, кнопки идут сразу за ним и
+        // сменяют друг друга на одном месте, а прогресс — последним, он тянется вправо.
+        engineStatusLabel.widthAnchor.constraint(equalToConstant: 240).isActive = true
         let engineStatusRow = NSStackView(views: [engineStatusIcon, engineStatusLabel,
-                                                  engineProgress, engineCancelBtn,
-                                                  engineDownloadBtn])
+                                                  engineDownloadBtn, engineCancelBtn,
+                                                  engineProgress])
         engineStatusRow.spacing = 6
         engineStatusRow.alignment = .centerY
         stack.addArrangedSubview(engineStatusRow)
@@ -1013,10 +1019,12 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     }
 
     private func modelDownloadFinished(_ outcome: ModelDownloader.Outcome) {
-        // Если модель не появилась (отмена/ошибка) — честно возвращаемся на облако.
-        if !LocalSTT.isModelAvailable, Prefs.sttEngine == "local" {
-            Prefs.sttEngine = "cloud"
-        }
+        // ⚠️ Движок НЕ переключаем, даже если модель не появилась. «Локально (офлайн)» —
+        // решение о приватности, и менять его за человека нельзя даже видимо: он выбирал не
+        // «распознавать как получится», а «не отправлять звук наружу». Без модели диктовка
+        // откажет на старте и объяснит, чего не хватает (§2.5) — этого достаточно.
+        // Раньше здесь стоял возврат на облако; он был терпим лишь потому, что отказа на
+        // старте ещё не существовало.
         refreshEngineUI()
         refreshModelSizeUI()
         if case .failure(let msg) = outcome {
@@ -1085,7 +1093,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         alert.buttons.first?.hasDestructiveAction = true
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         ModelDownloader.deleteInstalledModel()
-        if Prefs.sttEngine == "local" { Prefs.sttEngine = "cloud" }
+        // Движок остаётся тем, что выбрал человек, — см. modelDownloadFinished.
         refreshEngineUI()
         refreshModelSizeUI()
     }
@@ -1209,7 +1217,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
         let done = NSAlert()
         done.messageText = L("deleteAll.done.title")
-        done.informativeText = L("deleteAll.done.msg")
+        // ⚠️ Ключ мог пережить удаление: файл стёрт, но остаётся dev-fallback из переменной
+        // окружения (§9). Поле ключа при этом снова заполнено, и рядом со словами «все данные
+        // удалены» это читается как несработавшее удаление. Переменные окружения приложение
+        // не трогает — это системная настройка, поэтому чиним не удаление, а молчание.
+        let survived = KeyStore.load() == nil && currentAPIKey() != nil
+        done.informativeText = survived
+            ? L("deleteAll.done.msg") + "\n\n" + L("deleteAll.done.envKey")
+            : L("deleteAll.done.msg")
         done.runModal()
     }
 }

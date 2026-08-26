@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **Choosing "Local (offline)" now sticks.** Cancelling the model download, a failed download or
+  deleting the model no longer flips the engine back to the cloud. Picking the local engine is a
+  decision about privacy, not a preference about quality, and it is not the app's to reverse —
+  even visibly. Without a model the dictation refuses at the start and says what is missing,
+  which is enough. (Matches the Windows port, which never did the flip.)
+
+### Fixed
+- **The button next to the status line no longer moves out from under the cursor.** The status
+  text changes at exactly the moment someone is about to press the button beside it — "Model not
+  downloaded yet (400 MB)" becomes "Downloading model… 22%" — and the button used to slide left
+  along with it. The text now keeps its place, and "Download" and "Cancel" occupy the same spot.
+- **"Delete all data" now says when a key survives it.** The saved key is deleted, but a key set
+  in the `GROQ_API_KEY` environment variable keeps working, and a filled-in key field next to
+  "everything deleted" reads like the deletion failed. Environment variables are a system setting
+  and not the app's to change, so the app now names the variable instead of staying quiet.
+
 ## [0.9.19] — 2026-08-26 — Voica gets out through a corporate proxy
 
 ### Added
