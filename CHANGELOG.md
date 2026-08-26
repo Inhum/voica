@@ -23,10 +23,12 @@ All notable changes to this project are documented here. The format is based on
 
 ### Fixed
 - **"Local (offline)" no longer sends a dictation to the cloud behind your back.** With the
-  local engine selected but no model on disk, the recording went to Groq and the switch still
-  said offline. Standing in for a missing model with the cloud is fine only while the model is
-  downloading; otherwise the app now says the model is not installed and sends nothing. Found by
-  deleting the model and dictating — the history entry said `whisper-large-v3`.
+  local engine selected but no model on disk, the recording went to Groq while the switch still
+  said offline. The cloud never stands in for a missing model now — not even while the model is
+  downloading, since agreeing to a download is not agreeing to send your voice out. Instead the
+  warning comes up *before* recording starts, names what is missing, and offers a button
+  straight to the tab where the model is downloaded. Found by deleting the model and dictating —
+  the history entry said `whisper-large-v3`.
 
 ### Changed
 - **Switching to the local engine no longer starts a 400 MB download on its own.** There is a

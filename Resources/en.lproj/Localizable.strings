@@ -70,8 +70,9 @@
 /* Settings */
 "settings.title" = "Voica — Settings";
 "err.proxyFailed" = "Could not get through the proxy (%@). Check the proxy address and its password in System Settings → Network → Proxies — the app takes them from there.";
-"alert.noModel.title" = "The local model is not installed";
-"alert.noModel.msg" = "The local engine is selected but the model is not on disk. The recording was not sent to the cloud — \"Local (offline)\" means offline. Download the model in Settings → General, or switch to the cloud engine.";
+"alert.noModel.title" = "Download the GigaAM local model";
+"alert.noModel.msg" = "The local engine is selected but the model is not on disk, so there is nothing to dictate with. Nothing goes to the cloud — \"Local (offline)\" means offline. Download the model on the General tab, or switch the engine to the cloud.";
+"alert.noModel.open" = "Open Settings";
 "settings.tab.network" = "Network";
 "settings.network.header" = "Proxy";
 "settings.proxy.toggle" = "Use the system proxy";

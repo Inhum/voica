@@ -254,6 +254,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func startDictation() {
         guard state == .idle else { return }
+        // ⚠️ Проверяем ДО записи. Сказать «модели нет» после того, как человек наговорил две
+        // минуты, — значит потратить его время впустую: расшифровать это будет нечем, а в
+        // облако мы такую запись не отправляем (§2.5).
+        guard !needsLocalModel() else { return offerToInstallModel() }
         recorder.requestPermission { [weak self] granted in
             guard let self else { return }
             guard granted else {
@@ -308,22 +312,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         route(rec: rec)
     }
 
+    /// Выбран локальный движок, а модели нет. Диктовать нечем.
+    private func needsLocalModel() -> Bool {
+        Prefs.sttEngine == "local" && !LocalSTT.isModelAvailable
+    }
+
+    /// ⚠️ Облаком НЕ подменяем ни при каких условиях, в том числе пока модель качается.
+    /// «Локально (офлайн)» — обещание приватности; нажатие «Скачать модель» согласия отправить
+    /// голос в Groq не означает. Вместо подмены — прямое предложение поставить модель.
+    private func offerToInstallModel() {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = L("alert.noModel.title")
+        a.informativeText = L("alert.noModel.msg")
+        a.addButton(withTitle: L("alert.noModel.open"))
+        a.addButton(withTitle: L("common.cancel"))
+        if a.runModal() == .alertFirstButtonReturn { settingsWindow.showGeneral() }
+    }
+
     /// Куда отправить запись: локальный движок, облако или никуда.
     ///
-    /// ⚠️ **Выбран локальный движок, а модели нет — В ОБЛАКО НЕ ОТПРАВЛЯЕМ.** «Локально
-    /// (офлайн)» это обещание приватности, и тихо нарушить его хуже, чем отказать: человек
-    /// видит на переключателе «офлайн», а звук уезжает в Groq. Поймано живой проверкой —
+    /// ⚠️ **Выбран локальный движок, а модели нет — В ОБЛАКО НЕ ОТПРАВЛЯЕМ, никогда.**
+    /// «Локально (офлайн)» это обещание приватности, и тихо нарушить его хуже, чем отказать:
+    /// человек видит на переключателе «офлайн», а звук уезжает в Groq. Поймано живой проверкой —
     /// после удаления модели диктовка ушла в облако, и в истории осталось `whisper-large-v3`.
     ///
-    /// Единственное исключение — **пока модель качается**: подмена временная, о ней сказано
-    /// в §2.5, и человек только что сам нажал «Скачать».
+    /// Сюда в норме не доходят: старт диктовки такую запись не начнёт. Проверка остаётся
+    /// подстраховкой на случай, когда модель удалили уже во время записи.
     private func route(rec: (url: URL, duration: TimeInterval)) {
         guard Prefs.sttEngine == "local" else { return transcribeViaCloud(rec: rec) }
         if LocalSTT.isModelAvailable { return transcribeLocally(rec: rec) }
-        if ModelDownloader.shared.isDownloading { return transcribeViaCloud(rec: rec) }
         state = .idle
         try? FileManager.default.removeItem(at: rec.url)
-        alert(L("alert.noModel.title"), L("alert.noModel.msg"))
+        offerToInstallModel()
     }
 
     private func transcribeViaCloud(rec: (url: URL, duration: TimeInterval)) {

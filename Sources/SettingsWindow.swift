@@ -674,10 +674,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         fitWindowToSelectedTab()
     }
 
+    /// Открыть настройки сразу на вкладке General — туда ведёт кнопка из предупреждения
+    /// о неустановленной локальной модели: там и переключатель движка, и кнопка «Скачать».
+    func showGeneral() { showOn(tab: 0) }
+
     /// Открыть настройки сразу на вкладке About (пункт меню-бара «О Voica» ведёт сюда).
-    func showAbout() {
+    func showAbout() { showOn(tab: tabs.tabViewItems.count - 1) }   // About — последняя
+
+    private func showOn(tab index: Int) {
         populate()
-        tabs.selectedTabViewItemIndex = tabs.tabViewItems.count - 1   // About — последняя
+        tabs.selectedTabViewItemIndex = index
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         showWindow(nil)
