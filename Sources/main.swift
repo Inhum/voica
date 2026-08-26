@@ -327,7 +327,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         a.informativeText = L("alert.noModel.msg")
         a.addButton(withTitle: L("alert.noModel.open"))
         a.addButton(withTitle: L("common.cancel"))
-        if a.runModal() == .alertFirstButtonReturn { settingsWindow.showGeneral() }
+        // Окно открываем СЛЕДУЮЩИМ витком цикла: модальная сессия к этому моменту полностью
+        // завершена, и активация не спорит с её разбором.
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        DispatchQueue.main.async { [weak self] in self?.settingsWindow.showGeneral() }
     }
 
     /// Куда отправить запись: локальный движок, облако или никуда.

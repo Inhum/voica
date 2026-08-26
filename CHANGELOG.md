@@ -30,6 +30,11 @@ All notable changes to this project are documented here. The format is based on
   straight to the tab where the model is downloaded. Found by deleting the model and dictating —
   the history entry said `whisper-large-v3`.
 
+- **Voica comes back with Cmd+Tab after the settings window was opened from a warning.** The
+  app is a menu-bar agent and only joins the app switcher while a window is open; it used to
+  join *after* activating, so the switcher had no record of it being used and put it last in the
+  list. It now joins first and activates second.
+
 ### Changed
 - **Switching to the local engine no longer starts a 400 MB download on its own.** There is a
   "Download model" button instead. In a network where the proxy wants authentication, the old

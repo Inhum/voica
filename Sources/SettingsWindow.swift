@@ -667,6 +667,7 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
 
     func show() {
         populate()
+        promoteToRegular()
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         showWindow(nil)
@@ -684,11 +685,23 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
     private func showOn(tab index: Int) {
         populate()
         tabs.selectedTabViewItemIndex = index
+        // ⚠️ Повышение до обычного приложения — ДО активации, а не после (по уведомлению
+        // о ключевом окне). Порядок важен: приложения-агента в переключателе Cmd+Tab нет,
+        // и активация, случившаяся до повышения, там не запоминается — приложение попадает
+        // в конец списка. Живой случай: предупреждение о модели → «Перейти в настройки» →
+        // клик по другому окну → Cmd+Tab возвращал не Voica.
+        promoteToRegular()
         NSApp.activate(ignoringOtherApps: true)
         window?.center()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         fitWindowToSelectedTab()
+    }
+
+    /// Пока открыто окно, приложение перестаёт быть агентом: иначе оно не попадает ни в Dock,
+    /// ни в Cmd+Tab, и вернуться к открытому окну нечем. Обратно понижает `voicaWindowWillClose`.
+    private func promoteToRegular() {
+        if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
     }
 
     /// Подогнать высоту окна под выбранную вкладку.
