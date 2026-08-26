@@ -30,6 +30,14 @@ All notable changes to this project are documented here. The format is based on
   straight to the tab where the model is downloaded. Found by deleting the model and dictating —
   the history entry said `whisper-large-v3`.
 
+- **Dictating with no Groq key now says so, instead of nothing happening.** With cloud
+  recognition selected and no key, a short press produced a blink of the recording capsule and
+  silence — the recording was below the "accidental press" threshold and was dropped without a
+  word. The check now happens before recording starts, the same way it does for a missing local
+  model, and offers the way out: paste a key, or switch to the local engine.
+- **Two identical warnings no longer stack on top of each other.** In push-to-talk mode — the
+  macOS default — every press starts a dictation, so two presses produced two copies of the same
+  window. The second one now just brings the first to the front.
 - **Voica comes back with Cmd+Tab after the settings window was opened from a warning.** The
   app is a menu-bar agent and only joins the app switcher while a window is open; it used to
   join *after* activating, so the switcher had no record of it being used and put it last in the

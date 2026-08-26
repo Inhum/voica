@@ -70,6 +70,8 @@
 /* Settings */
 "settings.title" = "Voica — Settings";
 "err.proxyFailed" = "Could not get through the proxy (%@). Check the proxy address and its password in System Settings → Network → Proxies — the app takes them from there.";
+"alert.noKey.title" = "A Groq key is needed";
+"alert.noKey.msg" = "Cloud recognition is selected but there is no key, so there is nowhere to send the recording. Paste a key on the General tab, or switch recognition to \"Local (offline)\" — it works without a key and without the internet.";
 "alert.noModel.title" = "Download the GigaAM local model";
 "alert.noModel.msg" = "The local engine is selected but the model is not on disk, so there is nothing to dictate with. Nothing goes to the cloud — \"Local (offline)\" means offline. Download the model on the General tab, or switch the engine to the cloud.";
 "alert.noModel.open" = "Open Settings";

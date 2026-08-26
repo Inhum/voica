@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let prepHUD = PrepHUD()
     private let recordingHUD = RecordingHUD()
     private var pulseTimer: Timer?
-    private var lastIdleTapAt: Date?   // для «двойного тапа» в режиме Toggle
+    private var lastIdleTapAt: Date?
+    private var isShowingSetupAlert = false   // для «двойного тапа» в режиме Toggle
 
     private var state: DictationState = .idle { didSet { updateIcon() } }
 
@@ -257,7 +258,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // ⚠️ Проверяем ДО записи. Сказать «модели нет» после того, как человек наговорил две
         // минуты, — значит потратить его время впустую: расшифровать это будет нечем, а в
         // облако мы такую запись не отправляем (§2.5).
-        guard !needsLocalModel() else { return offerToInstallModel() }
+        guard let blocker = setupBlocker() else { return startRecording() }
+        offerSetup(blocker)
+    }
+
+    /// Диктовать нечем: у локального движка нет модели, у облачного — ключа. Проверяется
+    /// ДО записи: сказать это человеку, который уже наговорил две минуты, — потратить его
+    /// время впустую, расшифровать эту запись будет нечем.
+    private func setupBlocker() -> (title: String, msg: String)? {
+        if Prefs.sttEngine == "local" {
+            return LocalSTT.isModelAvailable ? nil
+                 : (L("alert.noModel.title"), L("alert.noModel.msg"))
+        }
+        return currentAPIKey() == nil ? (L("alert.noKey.title"), L("alert.noKey.msg")) : nil
+    }
+
+    private func startRecording() {
         recorder.requestPermission { [weak self] granted in
             guard let self else { return }
             guard granted else {
@@ -312,19 +328,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         route(rec: rec)
     }
 
-    /// Выбран локальный движок, а модели нет. Диктовать нечем.
-    private func needsLocalModel() -> Bool {
-        Prefs.sttEngine == "local" && !LocalSTT.isModelAvailable
-    }
-
     /// ⚠️ Облаком НЕ подменяем ни при каких условиях, в том числе пока модель качается.
     /// «Локально (офлайн)» — обещание приватности; нажатие «Скачать модель» согласия отправить
-    /// голос в Groq не означает. Вместо подмены — прямое предложение поставить модель.
-    private func offerToInstallModel() {
+    /// голос в Groq не означает. Вместо подмены — прямое предложение настроить.
+    ///
+    /// ⚠️ **Второе окно поверх первого не открываем.** В режиме PTT (дефолт macOS) каждое
+    /// нажатие клавиши начинает диктовку, поэтому пара нажатий подряд давала пару одинаковых
+    /// окон друг на друге. Уже открытое просто поднимаем.
+    private func offerSetup(_ blocker: (title: String, msg: String)) {
+        guard !isShowingSetupAlert else { return NSApp.activate(ignoringOtherApps: true) }
+        isShowingSetupAlert = true
+        defer { isShowingSetupAlert = false }
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
-        a.messageText = L("alert.noModel.title")
-        a.informativeText = L("alert.noModel.msg")
+        a.messageText = blocker.title
+        a.informativeText = blocker.msg
         a.addButton(withTitle: L("alert.noModel.open"))
         a.addButton(withTitle: L("common.cancel"))
         // Окно открываем СЛЕДУЮЩИМ витком цикла: модальная сессия к этому моменту полностью
@@ -347,7 +365,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if LocalSTT.isModelAvailable { return transcribeLocally(rec: rec) }
         state = .idle
         try? FileManager.default.removeItem(at: rec.url)
-        offerToInstallModel()
+        offerSetup((L("alert.noModel.title"), L("alert.noModel.msg")))
     }
 
     private func transcribeViaCloud(rec: (url: URL, duration: TimeInterval)) {
