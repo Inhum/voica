@@ -112,6 +112,7 @@ Voica бесплатна и останется бесплатной — все �
   <img src="docs/settings-dictation.png" width="49%" alt="Настройки — Диктовка">
   <img src="docs/settings-vocabulary.png" width="49%" alt="Настройки — Словарь">
   <img src="docs/settings-data.png" width="49%" alt="Настройки — Данные">
+  <img src="docs/settings-network.png" width="49%" alt="Настройки — Сеть">
   <img src="docs/settings-about.png" width="49%" alt="Настройки — О программе">
 </p>
 

@@ -112,6 +112,7 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
   <img src="docs/settings-dictation.png" width="49%" alt="Settings — Dictation">
   <img src="docs/settings-vocabulary.png" width="49%" alt="Settings — Vocabulary">
   <img src="docs/settings-data.png" width="49%" alt="Settings — Data">
+  <img src="docs/settings-network.png" width="49%" alt="Settings — Network">
   <img src="docs/settings-about.png" width="49%" alt="Settings — About">
 </p>
 
