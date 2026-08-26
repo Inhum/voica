@@ -78,6 +78,11 @@
 "settings.tab.network" = "Network";
 "settings.network.header" = "Proxy";
 "settings.proxy.toggle" = "Use the system proxy";
+"proxy.explicit" = "%@ (set by the app)";
+"proxy.system" = "%@ (system)";
+"proxy.direct" = "direct, no proxy";
+"proxy.disabled" = "direct — the system proxy is turned off in settings";
+"proxy.unknown" = "address unknown";
 "settings.proxy.current" = "Currently using: %@";
 "settings.proxy.hint" = "The app reaches the network the same way Safari does: through the proxy set in System Settings → Network. The system stores the proxy password; there is nothing to enter here. Turn this off if a proxy is configured but gets in the way — requests will then go directly.";
 "settings.engine.download" = "Download model";

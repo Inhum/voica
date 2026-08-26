@@ -95,27 +95,37 @@ enum HTTP {
 
     // MARK: - Диагностика
 
-    /// Какой прокси система выбрала для этого адреса. Пишется в лог при сетевой неудаче:
-    /// без этого разбор в чужой сети превращается в переписку (§9.5).
-    static func proxyDescription(for url: URL) -> String {
-        // ⚠️ Сначала СВОЙ прокси, потом системный. Проверка поймала: с заданным $VOICA_PROXY
-        // строка писала «напрямую», потому что смотрела только в системные настройки. В логе
-        // это худший вид вранья — уводит от причины, ради которой лог и заведён.
-        if let explicit = explicitProxy() { return "\(explicit.host):\(explicit.port) (задан приложением)" }
-        guard Prefs.useSystemProxy else { return "напрямую (системный прокси выключен в настройках)" }
-        guard let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue(),
+    /// Адрес прокси, через который пойдёт запрос, — или nil, если запрос идёт напрямую.
+    /// Ровно это подставляется в сообщение об ошибке: адрес человек может проверить, а
+    /// пояснения про «системный» и «задан приложением» там только мешают.
+    static func proxyAddress(for url: URL) -> String? {
+        if let explicit = explicitProxy() { return "\(explicit.host):\(explicit.port)" }
+        guard Prefs.useSystemProxy,
+              let settings = CFNetworkCopySystemProxySettings()?.takeRetainedValue(),
               let list = CFNetworkCopyProxiesForURL(url as CFURL, settings)
-                  .takeRetainedValue() as? [[String: Any]], !list.isEmpty else {
-            return "не определён"
+                  .takeRetainedValue() as? [[String: Any]] else { return nil }
+        for entry in list {
+            let type = entry[kCFProxyTypeKey as String] as? String ?? ""
+            guard type != (kCFProxyTypeNone as String),
+                  let host = entry[kCFProxyHostNameKey as String] as? String else { continue }
+            if let port = entry[kCFProxyPortNumberKey as String] as? Int { return "\(host):\(port)" }
+            return host
         }
-        let described = list.map { entry -> String in
-            let type = entry[kCFProxyTypeKey as String] as? String ?? "?"
-            if type == (kCFProxyTypeNone as String) { return "напрямую" }
-            let host = entry[kCFProxyHostNameKey as String] as? String ?? "?"
-            let port = entry[kCFProxyPortNumberKey as String] as? Int
-            return port.map { "\(type) \(host):\($0)" } ?? "\(type) \(host)"
+        return nil
+    }
+
+    /// Человеческое описание для вкладки Network и лога: адрес плюс откуда он взялся.
+    ///
+    /// ⚠️ Строки берутся из локализации, а не пишутся здесь. Поймано на снимке пользователя:
+    /// в английском интерфейсе выходило «Could not get through the proxy (127.0.0.1:18899
+    /// (задан приложением))» — половина фразы по-русски.
+    static func proxyDescription(for url: URL) -> String {
+        if let explicit = explicitProxy() {
+            return L("proxy.explicit", "\(explicit.host):\(explicit.port)")
         }
-        return described.joined(separator: ", ")
+        guard Prefs.useSystemProxy else { return L("proxy.disabled") }
+        guard let address = proxyAddress(for: url) else { return L("proxy.direct") }
+        return L("proxy.system", address)
     }
 
     /// Ошибка пришла от прокси? Тогда человеку надо сказать именно это, а не «сеть
@@ -141,7 +151,7 @@ enum HTTP {
 
     /// Человеческое сообщение о неудаче с прокси, с названным адресом.
     static func proxyFailureMessage(for url: URL) -> String {
-        L("err.proxyFailed", proxyDescription(for: url))
+        L("err.proxyFailed", proxyAddress(for: url) ?? L("proxy.unknown"))
     }
 
     /// ⚠️ **Единственная точка превращения сетевой ошибки в текст для человека.** Общая сессия
