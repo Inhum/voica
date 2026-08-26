@@ -1,5 +1,10 @@
 # Релиз по тегу vX.Y.Z: сборка, подпись, самотест, .dmg, GitHub Release.
 #
+# Кандидаты в релиз: тег вида vX.Y.Z-rc.N. Публикуются как pre-release, поэтому НЕ попадают
+# в /releases/latest — проверка обновлений их не видит, и обычным пользователям пункт
+# «Скачать обновление» не загорается. Версия в Info.plist при этом остаётся X.Y.Z:
+# суффикс -rc.N живёт только в теге.
+#
 # Требует два секрета репозитория (Settings → Secrets and variables → Actions):
 #   MACOS_CERT_P12      — base64 от экспортированного .p12 «Voica Self-Signed»
 #   MACOS_CERT_PASSWORD — пароль, заданный при экспорте .p12
@@ -49,7 +54,10 @@ jobs:
         if: github.ref_type == 'tag'
         run: |
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' Resources/Info.plist)"
-          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+          # У кандидата в релиз тег длиннее версии на суффикс -rc.N — сравниваем без него.
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          BASE="${TAG_VERSION%%-*}"
+          if [ "$VERSION" != "$BASE" ]; then
             echo "::error::Info.plist: $VERSION, тег: $GITHUB_REF_NAME — поднимите версию перед тегом"
             exit 1
           fi
@@ -66,19 +74,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Всё, кроме заголовка релиза, идёт по БАЗОВОЙ версии: и раздел CHANGELOG, и имя dmg
+          # (package.sh берёт имя из Info.plist, где суффикса -rc.N нет).
+          BASE="${TAG_VERSION%%-*}"
           # выдёргиваем раздел этой версии из CHANGELOG в описание релиза
-          awk -v ver="$VERSION" '
+          awk -v ver="$BASE" '
             $0 ~ "^## \\[" ver "\\]" { flag = 1; next }
             /^## \[/ { flag = 0 }
             flag' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           # заголовок релиза — из строки CHANGELOG «## [VER] — ДАТА — Тема»:
           # берём «Тему» после второго « — ». Нет темы → просто «vX.Y.Z».
-          LABEL="$(grep -m1 "^## \[$VERSION\]" CHANGELOG.md \
+          LABEL="$(grep -m1 "^## \[$BASE\]" CHANGELOG.md \
             | awk -F ' — ' 'NF>=3 { out=$3; for (i=4;i<=NF;i++) out=out FS $i; print out }')"
           TITLE="$GITHUB_REF_NAME"
           [ -n "$LABEL" ] && TITLE="$GITHUB_REF_NAME — $LABEL"
-          gh release create "$GITHUB_REF_NAME" \
+          # Кандидат в релиз (тег с суффиксом) публикуется как pre-release: GitHub не отдаёт
+          # такие в /releases/latest, значит проверка обновлений их не увидит.
+          PRERELEASE=""
+          case "$TAG_VERSION" in
+            *-*) PRERELEASE="--prerelease"
+                 { echo "> ⚠️ Кандидат в релиз ($GITHUB_REF_NAME). Проверка обновлений его не"
+                   echo "> показывает: это сборка для проверки, а не выпуск."
+                   echo
+                   cat "$RUNNER_TEMP/notes.md"
+                 } > "$RUNNER_TEMP/notes.rc.md"
+                 mv "$RUNNER_TEMP/notes.rc.md" "$RUNNER_TEMP/notes.md" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" $PRERELEASE \
             --title "$TITLE" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            "build/Voica-$VERSION.dmg"
+            "build/Voica-$BASE.dmg"
