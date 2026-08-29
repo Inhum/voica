@@ -14,6 +14,10 @@ All notable changes to this project are documented here. The format is based on
   which is enough. (Matches the Windows port, which never did the flip.)
 
 ### Fixed
+- **The settings window no longer widens when the model download starts.** Keeping the button
+  still required a fixed-width status text, and text plus button plus progress bar stopped
+  fitting the tab — so the fix for one twitch caused another. The progress bar now has a row of
+  its own.
 - **The button next to the status line no longer moves out from under the cursor.** The status
   text changes at exactly the moment someone is about to press the button beside it — "Model not
   downloaded yet (400 MB)" becomes "Downloading model… 22%" — and the button used to slide left

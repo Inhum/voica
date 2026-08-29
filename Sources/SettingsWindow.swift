@@ -188,12 +188,16 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         // из-под курсора. Поэтому текст занимает своё место всегда, кнопки идут сразу за ним и
         // сменяют друг друга на одном месте, а прогресс — последним, он тянется вправо.
         engineStatusLabel.widthAnchor.constraint(equalToConstant: 240).isActive = true
+        // ⚠️ Полоса прогресса — ОТДЕЛЬНОЙ строкой, а не в этом ряду. В ряду она не помещалась:
+        // текст фиксированной ширины плюс кнопка плюс полоса перестали влезать в ширину вкладки,
+        // и окно расширялось вправо, когда начиналась загрузка. Отдельной строкой она заодно
+        // не двигает кнопку — та остаётся на месте, ради чего ширина текста и фиксировалась.
         let engineStatusRow = NSStackView(views: [engineStatusIcon, engineStatusLabel,
-                                                  engineDownloadBtn, engineCancelBtn,
-                                                  engineProgress])
+                                                  engineDownloadBtn, engineCancelBtn])
         engineStatusRow.spacing = 6
         engineStatusRow.alignment = .centerY
         stack.addArrangedSubview(engineStatusRow)
+        stack.addArrangedSubview(engineProgress)
 
         stack.addArrangedSubview(makeHint(L("settings.engine.hint")))
 
