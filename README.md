@@ -173,6 +173,15 @@ and an AI-model picker (recommended-automatic or a specific model from your live
 ~/Library/Preferences/com.ushakov.voica.plist                    # settings
 ```
 
+Full wipe: Settings → **Delete all data** (confirmed by typing a random phrase). The model is
+removed separately: Settings → **Data** → *Delete model*.
+
+⚠️ **Deleting the app itself leaves these files alone** — they live outside the bundle and
+survive both removal and reinstallation. That is deliberate: otherwise reinstalling would cost
+you another ~400 MB download and your whole history. If you want everything gone, do it **before**
+you delete the app — or remove `~/Library/Application Support/com.ushakov.voica/` and the
+preferences file by hand.
+
 ## Bring your own Groq key
 
 The key is only needed for the **cloud** engine (and for AI term correction); the local
