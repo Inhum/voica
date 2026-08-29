@@ -53,9 +53,9 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
   how much space it frees. If the cloud is unreachable and the model is installed, Voica
   recognizes locally instead (with a notification). There is no fallback the other way:
   **once you pick *Local (offline)*, no audio goes to the cloud under any circumstances.**
-  With no model, dictation does not start — Voica says what is missing and where to fix it. Trade-offs: Latin words can come out as a
-  mix of alphabets (`Dпсик` instead of `DeepSeek`) — that is what the vocabulary fixes, see
-  below. The recognition hint stays cloud-only.
+  With no model, dictation does not start — Voica says what is missing and where to fix it.
+  Trade-offs: Latin words can come out as a mix of alphabets (`Dпсик` instead of `DeepSeek`) —
+  that is what the vocabulary fixes, see below. The recognition hint stays cloud-only.
 - Recognized text is **inserted into the active field** by default (or shown in an editable
   window — your choice in Settings), and always copied to the clipboard as a fallback.
 - **History** of all transcriptions (SQLite): review, re-copy, play back the audio, delete
