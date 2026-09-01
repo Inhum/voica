@@ -7,6 +7,16 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Changed
+- **A model your organisation hasn't enabled no longer stops term correction.** Groq's model list
+  says what the platform serves, not what your key may use — access is a switch in the Groq
+  console, and a newly released model arrives switched off. So the app kept resolving to the first
+  model in its chain, kept being refused, and every dictation quietly came back without its terms
+  corrected. A refusal now works exactly like a model being withdrawn: Voica remembers that this
+  key may not use it, steps down to the next model in the chain and carries on. It says so once —
+  which model was refused, which one it moved to, and where to enable the first one — because that
+  switch takes a minute and silence would leave you on the lesser model forever. A model you chose
+  by hand is never swapped out from under you. The marks are tied to the key and cleared whenever
+  Settings re-checks, so a model you enable later is picked up again.
 - **The second model in the auto-pick chain is now `qwen/qwen3.8-27b`.** Groq announced the
   deprecation of `qwen/qwen3.6-27b` on 1 September 2026 and switches it off on the 14th. Nothing
   would have broken: the app picks its chat model from the live list and heals itself when one

@@ -26,6 +26,8 @@ enum Prefs {
         static let fixTermsByRules = "fixTermsByRules" // исправлять термины правилами (§6.2)
         static let toggleDoubleTap = "toggleDoubleTap" // Toggle: старт двойным тапом (иначе одиночным)
         static let useSystemProxy = "useSystemProxy"   // ходить через системный прокси (§9.5)
+        static let blockedChatModels = "blockedChatModels"      // модели, запрещённые организацией (403)
+        static let blockedChatModelsKey = "blockedChatModelsKey" // отпечаток ключа, для которого он собран
     }
 
     /// Модели chat-completions, которые Groq снял с раздачи (404). Сохранённый выбор такой
@@ -116,6 +118,31 @@ enum Prefs {
             return retiredChatModels.contains(v) ? GroqClient.defaultChatModel : v
         }
         set { d.set(newValue, forKey: Key.resolvedChatModel) }
+    }
+
+    /// Модели, на которых ключ пользователя получил 403: на платформе они есть, а организации
+    /// не разрешены (`GET /v1/models` показывает раздачу, а не доступ ключа). Помеченные
+    /// исключаются из авто-выбора, чтобы цепочка спускалась на следующее звено, а не упиралась.
+    ///
+    /// Список привязан к **отпечатку ключа**: у другой организации свои разрешения, наследовать
+    /// чужие запреты нельзя. Пометка намеренно не вечная — её сбрасывает проверка в настройках,
+    /// иначе разрешённая позже модель осталась бы в опале до переустановки.
+    static func blockedChatModels(fingerprint: String) -> Set<String> {
+        guard !fingerprint.isEmpty, d.string(forKey: Key.blockedChatModelsKey) == fingerprint else { return [] }
+        return Set(d.stringArray(forKey: Key.blockedChatModels) ?? [])
+    }
+
+    static func markChatModelBlocked(_ id: String, fingerprint: String) {
+        guard !fingerprint.isEmpty else { return }
+        var set = blockedChatModels(fingerprint: fingerprint)
+        set.insert(id)
+        d.set(set.sorted(), forKey: Key.blockedChatModels)
+        d.set(fingerprint, forKey: Key.blockedChatModelsKey)
+    }
+
+    static func clearBlockedChatModels() {
+        d.removeObject(forKey: Key.blockedChatModels)
+        d.removeObject(forKey: Key.blockedChatModelsKey)
     }
 
     /// Облачная модель распознавания (Groq Whisper). Только облако — локальный движок один

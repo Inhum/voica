@@ -146,6 +146,7 @@
 "settings.vocab.llm.switched" = "Выбранная модель недоступна — переключились на %@";
 "settings.vocab.llm.unavailable" = "Для вашего ключа нет подходящих chat-моделей";
 "settings.vocab.llm.blocked" = "Модель %@ заблокирована — разрешите её в console.groq.com → Settings → Limits";
+"settings.vocab.llm.steppedDown" = "Модель %@ не разрешена в вашей организации — перешли на %@";
 "settings.vocab.llm.notfound" = "Модель %@ недоступна (Groq мог переименовать или убрать её) — обновите приложение";
 "settings.vocab.llm.model" = "Модель ИИ:";
 "settings.vocab.llm.model.auto" = "Рекомендуемая (автоматически)";
@@ -234,6 +235,8 @@
 /* Уведомление об офлайн-переходе */
 "notify.chatBlocked.title" = "ИИ-исправление терминов не сработало";
 "notify.chatBlocked.body" = "Модель %@ не разрешена в вашей организации Groq. Текст вставлен без исправления терминов. Разрешите модель: console.groq.com → Settings → Limits.";
+"notify.chatStepped.title" = "ИИ-исправление терминов: сменили модель";
+"notify.chatStepped.body" = "Модель %@ не разрешена в вашей организации Groq — дальше работаем на %@. Чтобы вернуть прежнюю, разрешите её: console.groq.com → Settings → Limits.";
 "notify.micdied.title" = "Микрофон перестал отдавать звук";
 "notify.micdied.body" = "Распознаю то, что успело записаться.";
 "notify.fallback.title" = "Облако недоступно";

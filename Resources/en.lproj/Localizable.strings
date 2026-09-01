@@ -146,6 +146,7 @@
 "settings.vocab.llm.switched" = "Selected model was unavailable — switched to %@";
 "settings.vocab.llm.unavailable" = "No compatible chat models for your key";
 "settings.vocab.llm.blocked" = "Model %@ is blocked — allow it at console.groq.com → Settings → Limits";
+"settings.vocab.llm.steppedDown" = "Model %@ isn't enabled for your organisation — switched to %@";
 "settings.vocab.llm.notfound" = "Model %@ is unavailable (Groq may have renamed or removed it) — update the app";
 "settings.vocab.llm.model" = "AI model:";
 "settings.vocab.llm.model.auto" = "Recommended (automatic)";
@@ -236,6 +237,8 @@
 /* Offline fallback notification */
 "notify.chatBlocked.title" = "AI term correction didn't run";
 "notify.chatBlocked.body" = "The model %@ isn't enabled for your Groq organisation. The text was inserted without term correction. Enable it at console.groq.com → Settings → Limits.";
+"notify.chatStepped.title" = "AI term correction: model switched";
+"notify.chatStepped.body" = "The model %@ isn't enabled for your Groq organisation — carrying on with %@. To get the previous one back, enable it at console.groq.com → Settings → Limits.";
 "notify.micdied.title" = "The microphone stopped sending audio";
 "notify.micdied.body" = "Transcribing what was recorded before it stopped.";
 "notify.fallback.title" = "Cloud is unreachable";

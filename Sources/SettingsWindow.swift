@@ -1131,6 +1131,8 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
                 case .available(let m): text = L("settings.vocab.llm.using", m);     kind = .success
                 case .switched(let m):  text = L("settings.vocab.llm.switched", m);   kind = .success
                 case .blocked(let m):   text = L("settings.vocab.llm.blocked", m);    kind = .warning
+                case .steppedDown(let blocked, let using):
+                    text = L("settings.vocab.llm.steppedDown", blocked, using);        kind = .warning
                 case .unavailable:      text = L("settings.vocab.llm.unavailable");   kind = .warning
                 case .error(let e):     text = e;                                     kind = .warning
                 }

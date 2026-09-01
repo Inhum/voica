@@ -39,7 +39,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var latestUpdate: Update?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        GroqClient.onChatModelBlocked = { [weak self] model in self?.notifyChatModelBlocked(model) }
+        GroqClient.onChatModelBlocked = { [weak self] model, next in
+            self?.notifyChatModelBlocked(model, next: next)
+        }
 
         _ = Store.shared   // открыть БД и выполнить чистку аудио по retention
 
@@ -487,7 +489,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 403 от chat-модели: она есть у Groq, но не разрешена организации пользователя.
     /// Постобработка при этом молча возвращает исходный текст — без уведомления человек
     /// решил бы, что исправление терминов просто не работает.
-    private func notifyChatModelBlocked(_ model: String) {
+    /// 403 на chat-модели. `next` — модель, на которую приложение спустилось само; nil, если
+    /// спускаться некуда или выбор ручной. Разница важна: в первом случае исправление терминов
+    /// продолжает работать и человеку сообщают, как вернуть лучшую модель, во втором — не работает.
+    private func notifyChatModelBlocked(_ model: String, next: String?) {
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert]) { granted, _ in
             guard granted else {
@@ -495,8 +500,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             let content = UNMutableNotificationContent()
-            content.title = L("notify.chatBlocked.title")
-            content.body = L("notify.chatBlocked.body", model)
+            content.title = next == nil ? L("notify.chatBlocked.title") : L("notify.chatStepped.title")
+            content.body = next.map { L("notify.chatStepped.body", model, $0) }
+                ?? L("notify.chatBlocked.body", model)
             center.add(UNNotificationRequest(identifier: "voica-chat-blocked",
                                              content: content, trigger: nil))
         }

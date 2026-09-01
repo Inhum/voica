@@ -2,6 +2,7 @@
 // Docs: https://console.groq.com/docs/speech-to-text
 
 import Foundation
+import CryptoKit
 
 struct Transcription {
     let text: String
@@ -135,9 +136,17 @@ enum GroqClient {
     static let defaultChatModel = "openai/gpt-oss-120b"
 
     /// Вызывается, когда chat-модель отдала 403 (не разрешена в Groq-организации пользователя).
-    /// Ставит AppDelegate; аргумент — id модели. Срабатывает не чаще раза на модель за сессию.
-    static var onChatModelBlocked: ((String) -> Void)?
+    /// Ставит AppDelegate; аргументы — запрещённая модель и та, на которую спустились
+    /// (nil, если спускаться некуда или выбор ручной). Не чаще раза на модель за сессию.
+    static var onChatModelBlocked: ((String, String?) -> Void)?
     private static var blockedNotified: String?
+
+    /// Отпечаток текущего ключа: к нему привязаны пометки 403 (`Prefs.blockedChatModels`),
+    /// чтобы запреты одной организации не наследовались другой. Сам ключ никуда не пишется.
+    static var keyFingerprint: String {
+        guard let key = currentAPIKey() else { return "" }
+        return SHA256.hash(data: Data(key.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+    }
 
     /// Модель, которой реально шлём постобработку СЕЙЧАС: ручной выбор пользователя или,
     /// в режиме "auto", последняя резолвнутая из живого списка (кэш в Prefs).
@@ -187,9 +196,17 @@ enum GroqClient {
     }
 
     /// Выбирает лучшую доступную по приоритет-цепочке; фолбэк — первая в (отсортированном) списке.
+    /// Модели, помеченные как запрещённые организацией (403), из выбора исключаются — иначе
+    /// «auto» вечно возвращается на первое звено, получает 403 и до второго дело не доходит.
     static func pickRecommended(from live: [String]) -> String? {
-        for m in recommendedChatModels where live.contains(m) { return m }
-        return live.first
+        pickRecommended(from: live, blocked: Prefs.blockedChatModels(fingerprint: keyFingerprint))
+    }
+
+    /// Та же выборка с явным списком запретов — чтобы её можно было проверить без ключа.
+    static func pickRecommended(from live: [String], blocked: Set<String>) -> String? {
+        let usable = live.filter { !blocked.contains($0) }
+        for m in recommendedChatModels where usable.contains(m) { return m }
+        return usable.first
     }
 
     /// Фоновое само-исцеление: если активная модель пропала из живого списка (или мы в auto),
@@ -207,11 +224,37 @@ enum GroqClient {
         }
     }
 
+    /// 403 — модель есть на платформе, но организации не разрешена. Само-исцеление по 404 тут
+    /// не работает: модель жива, живой список её показывает, и «auto» будет возвращаться на неё
+    /// вечно. Поэтому 403 — такой же повод шагнуть вниз по цепочке, как исчезновение: помечаем
+    /// модель для этого ключа и пересчитываем резолв, чтобы следующая диктовка пошла на рабочую.
+    ///
+    /// Ручной выбор не подменяем: человек выбрал модель сам, менять её за него нельзя.
+    ///
+    /// Сообщаем в любом случае (один раз на модель за сессию) и именно потому, что спустились:
+    /// 403 чинится галочкой в консоли Groq за минуту, и молчание оставило бы человека на модели
+    /// похуже без единого намёка, что лучшую можно вернуть.
+    static func handleChatModelBlocked(_ model: String) {
+        Prefs.markChatModelBlocked(model, fingerprint: keyFingerprint)
+        let notify = blockedNotified != model
+        if notify { blockedNotified = model }
+        guard Prefs.chatModel == "auto" else {
+            if notify { DispatchQueue.main.async { onChatModelBlocked?(model, nil) } }
+            return
+        }
+        fetchChatModels { live in
+            let next = live.flatMap { pickRecommended(from: $0) }
+            if let next { Prefs.resolvedChatModel = next }
+            if notify { DispatchQueue.main.async { onChatModelBlocked?(model, next) } }
+        }
+    }
+
     /// Результат проверки/резолва chat-модели для UI настроек.
     enum ChatModelState {
         case available(String)   // модель доступна (показываем какую)
         case switched(String)    // выбранная исчезла — авто-переключились на эту
         case blocked(String)     // 403 — разрешить в Groq-org
+        case steppedDown(String, String)  // 403 на первой, спустились на вторую (запрещённая, рабочая)
         case unavailable         // у ключа нет ни одной подходящей chat-модели
         case error(String)       // сеть/ключ/прочее
     }
@@ -287,16 +330,8 @@ enum GroqClient {
             if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
                 healChatModelInBackground()   // модель убрали — чиним к следующей диктовке
             }
-            // 403 — модель есть на платформе, но не разрешена организации пользователя.
-            // Само-исцеление тут не помогает (модель жива, доступа нет), а молча терять
-            // исправление терминов на каждой диктовке — худший вариант: человек не узнает,
-            // что функция не работает. Сообщаем один раз на модель за сессию.
             if let http = resp as? HTTPURLResponse, http.statusCode == 403 {
-                let model = payload["model"] as? String ?? ""
-                if blockedNotified != model {
-                    blockedNotified = model
-                    DispatchQueue.main.async { onChatModelBlocked?(model) }
-                }
+                handleChatModelBlocked(payload["model"] as? String ?? "")
             }
             guard err == nil,
                   let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
@@ -320,11 +355,16 @@ enum GroqClient {
 
     /// Резолвит и проверяет chat-модель для ИИ-исправления, при необходимости само-исцеляясь.
     /// Порядок: тянем живой список → выбираем целевую (ручной выбор, если он ещё жив; иначе
-    /// приоритет-цепочка) → кэшируем резолв → пробным запросом отличаем 200 от 403 (Groq-org).
+    /// приоритет-цепочка) → кэшируем резолв → пробным запросом отличаем 200 от 403 (Groq-org),
+    /// а в режиме «auto» на 403 спускаемся на следующее звено и пробуем снова.
     /// Если ручной выбор исчез — молча переключаем на "auto" и сообщаем `.switched`.
     /// Возвращает состояние И живой список (для наполнения поповера выбора в UI).
+    ///
+    /// Пометки 403 здесь **сбрасываются**: проверка в настройках — это и есть перепроверка.
+    /// Иначе модель, разрешённую в консоли уже после отказа, приложение не заметило бы никогда.
     static func verifyChatModel(_ completion: @escaping (ChatModelState, [String]?) -> Void) {
         guard currentAPIKey() != nil else { return completion(.error(L("groq.err.noKey")), nil) }
+        Prefs.clearBlockedChatModels()
         fetchChatModels { live in
             guard let live = live else {
                 // Список не получили (сеть/ключ) — пробуем текущую активную напрямую.
@@ -348,10 +388,29 @@ enum GroqClient {
             }
             Prefs.resolvedChatModel = target
 
-            probeModel(target) { state in
+            probeStepping(target, live: live, blocked: nil, left: recommendedChatModels.count) { state in
                 if case .available(let m) = state, healed { completion(.switched(m), live) }
                 else { completion(state, live) }
             }
+        }
+    }
+
+    /// Проба со спуском: 403 в режиме «auto» — не тупик, а повод взять следующее звено цепочки.
+    /// `blocked` — первая запрещённая (о ней и говорим человеку, спуск без объяснения бесполезен),
+    /// `left` — предохранитель от бесконечного спуска, если запреты меняются под руками.
+    private static func probeStepping(_ model: String, live: [String], blocked: String?, left: Int,
+                                      _ completion: @escaping (ChatModelState) -> Void) {
+        probeModel(model) { state in
+            if case .available(let ok) = state, let blocked {
+                return completion(.steppedDown(blocked, ok))
+            }
+            guard case .blocked(let m) = state, Prefs.chatModel == "auto", left > 0 else {
+                return completion(state)
+            }
+            Prefs.markChatModelBlocked(m, fingerprint: keyFingerprint)
+            guard let next = pickRecommended(from: live), next != m else { return completion(state) }
+            Prefs.resolvedChatModel = next
+            probeStepping(next, live: live, blocked: blocked ?? m, left: left - 1, completion)
         }
     }
 

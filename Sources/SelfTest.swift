@@ -573,6 +573,39 @@ enum SelfTest {
               GroqClient.pickRecommended(from: ["some-new-model"]) == "some-new-model")
         check("pick empty → nil", GroqClient.pickRecommended(from: []) == nil)
 
+        // 403 («модель есть, организации не разрешена») — не тупик, а повод шагнуть ниже (§6.1):
+        // запрещённая выпадает из выбора, включая фолбэк «первая из живого списка».
+        check("pick skips blocked head",
+              GroqClient.pickRecommended(from: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"],
+                                         blocked: ["openai/gpt-oss-120b"]) == "qwen/qwen3.8-27b")
+        check("pick steps down twice",
+              GroqClient.pickRecommended(from: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"],
+                                         blocked: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]) == "openai/gpt-oss-20b")
+        check("pick all blocked → nil",
+              GroqClient.pickRecommended(from: ["openai/gpt-oss-120b"],
+                                         blocked: ["openai/gpt-oss-120b"]) == nil)
+        check("pick fallback skips blocked",
+              GroqClient.pickRecommended(from: ["aaa-model", "zzz-model"],
+                                         blocked: ["aaa-model"]) == "zzz-model")
+
+        // Пометки 403 живут при своём ключе: у другой организации свои разрешения.
+        let savedBlocked = UserDefaults.standard.stringArray(forKey: "blockedChatModels")
+        let savedBlockedKey = UserDefaults.standard.string(forKey: "blockedChatModelsKey")
+        Prefs.clearBlockedChatModels()
+        Prefs.markChatModelBlocked("openai/gpt-oss-120b", fingerprint: "aaa")
+        check("blocked mark round-trip",
+              Prefs.blockedChatModels(fingerprint: "aaa") == ["openai/gpt-oss-120b"])
+        check("blocked marks don't cross keys", Prefs.blockedChatModels(fingerprint: "bbb").isEmpty)
+        Prefs.markChatModelBlocked("qwen/qwen3.8-27b", fingerprint: "aaa")
+        check("blocked marks accumulate", Prefs.blockedChatModels(fingerprint: "aaa").count == 2)
+        Prefs.clearBlockedChatModels()
+        check("blocked marks cleared", Prefs.blockedChatModels(fingerprint: "aaa").isEmpty)
+        Prefs.markChatModelBlocked("openai/gpt-oss-120b", fingerprint: "")
+        check("no key → no marks", Prefs.blockedChatModels(fingerprint: "").isEmpty)
+        Prefs.clearBlockedChatModels()
+        if let savedBlocked { UserDefaults.standard.set(savedBlocked, forKey: "blockedChatModels") }
+        if let savedBlockedKey { UserDefaults.standard.set(savedBlockedKey, forKey: "blockedChatModelsKey") }
+
         let savedModel = UserDefaults.standard.string(forKey: "chatModel")
         let savedResolved = UserDefaults.standard.string(forKey: "resolvedChatModel")
         Prefs.chatModel = "auto"
