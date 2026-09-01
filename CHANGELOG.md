@@ -7,6 +7,12 @@ All notable changes to this project are documented here. The format is based on
 ## [Unreleased]
 
 ### Changed
+- **The second model in the auto-pick chain is now `qwen/qwen3.8-27b`.** Groq announced the
+  deprecation of `qwen/qwen3.6-27b` on 1 September 2026 and switches it off on the 14th. Nothing
+  would have broken: the app picks its chat model from the live list and heals itself when one
+  disappears. But the second link would have quietly emptied, and anyone whose organisation
+  blocks `openai/gpt-oss-120b` would have dropped straight to the 20b model. A manual choice of
+  the retired model now falls back to "auto" as well, without waiting for the first live list.
 - **Choosing "Local (offline)" now sticks.** Cancelling the model download, a failed download or
   deleting the model no longer flips the engine back to the cloud. Picking the local engine is a
   decision about privacy, not a preference about quality, and it is not the app's to reverse —

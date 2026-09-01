@@ -23,7 +23,7 @@ APP = "build/Voica.app/Contents/MacOS/Voica"
 KEY = pathlib.Path.home() / "Library/Application Support/com.ushakov.voica/credentials"
 VOCAB = ("Claude Code, Cowork, ChatGPT, Voica, focus-radio, Groq, API, ЕИС, оферта, "
          "GigaAM, Tailscale, app-connector, exit-node, DeepSeek")
-DEFAULT_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b"]
+DEFAULT_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
 
 # (что услышал движок, какие термины ОБЯЗАНЫ появиться). Пустой список — ловушка: обычная
 # русская речь, текст менять нельзя ни одним символом.
