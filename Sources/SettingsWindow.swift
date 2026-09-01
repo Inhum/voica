@@ -392,14 +392,14 @@ final class SettingsWindowController: NSWindowController, NSTextViewDelegate, NS
         llmSpinner = makeSpinner()
         llmStatusIcon = makeStatusIcon()
         llmStatusLabel = makeStatusLabel()
-        // Статус может быть длинным (напр. «Model … is blocked — allow it at …») — переносим
-        // по словам, а не обрезаем. Иконку/спиннер прижимаем к первой строке.
+        // Статус может быть длинным (напр. «Model … isn't enabled … — switched to …») —
+        // переносим по словам, а не обрезаем. Иконку/спиннер прижимаем к первой строке.
+        //
+        // ⚠️ Ширину здесь НЕ переопределять. Раньше стояло 400 при живом ограничении 260 из
+        // `makeStatusLabel`, и высота считалась по 400, а перенос шёл по 260: текст, которому
+        // нужно три строки, получал высоту двух и обрезался на полуслове. Поймано живой
+        // проверкой на сообщении о спуске по цепочке — «switched to qwen/» и всё.
         llmStatusLabel.lineBreakMode = .byWordWrapping
-        llmStatusLabel.maximumNumberOfLines = 0
-        llmStatusLabel.cell?.wraps = true
-        llmStatusLabel.cell?.isScrollable = false
-        llmStatusLabel.preferredMaxLayoutWidth = 400
-        llmStatusLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 400).isActive = true
         let statusRow = NSStackView(views: [llmSpinner, llmStatusIcon, llmStatusLabel])
         statusRow.spacing = 6
         statusRow.alignment = .top

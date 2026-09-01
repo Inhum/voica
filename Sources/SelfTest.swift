@@ -564,14 +564,19 @@ enum SelfTest {
         // Страховка от коллизии подстрок: "allam" не должен цеплять meta-llama ("…a-llama…")
         check("chat filter keeps meta-llama",
               GroqClient.isChatModelID("meta-llama/llama-4-scout-17b-16e-instruct"))
+        // ⚠️ Везде явный `blocked:` — иначе выборка читает НАСТОЯЩИЕ пометки 403 с этой машины,
+        // и тест падает не от кода, а от того, что у разработчика в консоли Groq выключена
+        // модель. Поймано ровно так: после живой проверки спуска «pick prefers chain» упал.
         check("pick prefers chain",
-              GroqClient.pickRecommended(from: ["llama-3.1-8b-instant", "openai/gpt-oss-120b"]) == "openai/gpt-oss-120b")
+              GroqClient.pickRecommended(from: ["llama-3.1-8b-instant", "openai/gpt-oss-120b"],
+                                         blocked: []) == "openai/gpt-oss-120b")
         // Снятая с раздачи модель не должна выигрывать у живой, даже если провайдер её ещё отдаёт
         check("pick ignores retired head",
-              GroqClient.pickRecommended(from: ["llama-3.3-70b-versatile", "openai/gpt-oss-20b"]) == "openai/gpt-oss-20b")
+              GroqClient.pickRecommended(from: ["llama-3.3-70b-versatile", "openai/gpt-oss-20b"],
+                                         blocked: []) == "openai/gpt-oss-20b")
         check("pick falls back to first",
-              GroqClient.pickRecommended(from: ["some-new-model"]) == "some-new-model")
-        check("pick empty → nil", GroqClient.pickRecommended(from: []) == nil)
+              GroqClient.pickRecommended(from: ["some-new-model"], blocked: []) == "some-new-model")
+        check("pick empty → nil", GroqClient.pickRecommended(from: [], blocked: []) == nil)
 
         // 403 («модель есть, организации не разрешена») — не тупик, а повод шагнуть ниже (§6.1):
         // запрещённая выпадает из выбора, включая фолбэк «первая из живого списка».
