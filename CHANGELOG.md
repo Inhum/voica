@@ -4,46 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
-
-### Changed
-- **A model your organisation hasn't enabled no longer stops term correction.** Groq's model list
-  says what the platform serves, not what your key may use — access is a switch in the Groq
-  console, and a newly released model arrives switched off. So the app kept resolving to the first
-  model in its chain, kept being refused, and every dictation quietly came back without its terms
-  corrected. A refusal now works exactly like a model being withdrawn: Voica remembers that this
-  key may not use it, steps down to the next model in the chain and carries on. It says so once —
-  which model was refused, which one it moved to, and where to enable the first one — because that
-  switch takes a minute and silence would leave you on the lesser model forever. A model you chose
-  by hand is never swapped out from under you. The marks are tied to the key and cleared whenever
-  Settings re-checks, so a model you enable later is picked up again.
-- **The second model in the auto-pick chain is now `qwen/qwen3.8-27b`.** Groq announced the
-  deprecation of `qwen/qwen3.6-27b` on 1 September 2026 and switches it off on the 14th. Nothing
-  would have broken: the app picks its chat model from the live list and heals itself when one
-  disappears. But the second link would have quietly emptied, and anyone whose organisation
-  blocks `openai/gpt-oss-120b` would have dropped straight to the 20b model. A manual choice of
-  the retired model now falls back to "auto" as well, without waiting for the first live list.
-- **Choosing "Local (offline)" now sticks.** Cancelling the model download, a failed download or
-  deleting the model no longer flips the engine back to the cloud. Picking the local engine is a
-  decision about privacy, not a preference about quality, and it is not the app's to reverse —
-  even visibly. Without a model the dictation refuses at the start and says what is missing,
-  which is enough. (Matches the Windows port, which never did the flip.)
-
-### Fixed
-- **The settings window no longer widens when the model download starts.** Keeping the button
-  still required a fixed-width status text, and text plus button plus progress bar stopped
-  fitting the tab — so the fix for one twitch caused another. The progress bar now has a row of
-  its own.
-- **The button next to the status line no longer moves out from under the cursor.** The status
-  text changes at exactly the moment someone is about to press the button beside it — "Model not
-  downloaded yet (400 MB)" becomes "Downloading model… 22%" — and the button used to slide left
-  along with it. The text now keeps its place, and "Download" and "Cancel" occupy the same spot.
-- **"Delete all data" now says when a key survives it.** The saved key is deleted, but a key set
-  in the `GROQ_API_KEY` environment variable keeps working, and a filled-in key field next to
-  "everything deleted" reads like the deletion failed. Environment variables are a system setting
-  and not the app's to change, so the app now names the variable instead of staying quiet.
-
-## [0.9.19] — 2026-08-26 — Voica gets out through a corporate proxy
+## [0.9.19] — 2026-09-16 — Voica gets out through a corporate proxy, and steps around a model it isn't allowed to use
 
 ### Added
 - **Voica works behind a corporate proxy.** The app already followed the system proxy — that
@@ -84,11 +45,44 @@ All notable changes to this project are documented here. The format is based on
   app is a menu-bar agent and only joins the app switcher while a window is open; it used to
   join *after* activating, so the switcher had no record of it being used and put it last in the
   list. It now joins first and activates second.
+- **The settings window no longer widens when the model download starts.** Keeping the button
+  still required a fixed-width status text, and text plus button plus progress bar stopped
+  fitting the tab — so the fix for one twitch caused another. The progress bar now has a row of
+  its own.
+- **The button next to the status line no longer moves out from under the cursor.** The status
+  text changes at exactly the moment someone is about to press the button beside it — "Model not
+  downloaded yet (400 MB)" becomes "Downloading model… 22%" — and the button used to slide left
+  along with it. The text now keeps its place, and "Download" and "Cancel" occupy the same spot.
+- **"Delete all data" now says when a key survives it.** The saved key is deleted, but a key set
+  in the `GROQ_API_KEY` environment variable keeps working, and a filled-in key field next to
+  "everything deleted" reads like the deletion failed. Environment variables are a system setting
+  and not the app's to change, so the app now names the variable instead of staying quiet.
 
 ### Changed
 - **Switching to the local engine no longer starts a 400 MB download on its own.** There is a
   "Download model" button instead. In a network where the proxy wants authentication, the old
   behaviour meant an instant failure nobody asked for.
+- **A model your organisation hasn't enabled no longer stops term correction.** Groq's model list
+  says what the platform serves, not what your key may use — access is a switch in the Groq
+  console, and a newly released model arrives switched off. So the app kept resolving to the first
+  model in its chain, kept being refused, and every dictation quietly came back without its terms
+  corrected. A refusal now works exactly like a model being withdrawn: Voica remembers that this
+  key may not use it, steps down to the next model in the chain and carries on. It says so once —
+  which model was refused, which one it moved to, and where to enable the first one — because that
+  switch takes a minute and silence would leave you on the lesser model forever. A model you chose
+  by hand is never swapped out from under you. The marks are tied to the key and cleared whenever
+  Settings re-checks, so a model you enable later is picked up again.
+- **The second model in the auto-pick chain is now `qwen/qwen3.8-27b`.** Groq announced the
+  deprecation of `qwen/qwen3.6-27b` on 1 September 2026 and switches it off on the 14th. Nothing
+  would have broken: the app picks its chat model from the live list and heals itself when one
+  disappears. But the second link would have quietly emptied, and anyone whose organisation
+  blocks `openai/gpt-oss-120b` would have dropped straight to the 20b model. A manual choice of
+  the retired model now falls back to "auto" as well, without waiting for the first live list.
+- **Choosing "Local (offline)" now sticks.** Cancelling the model download, a failed download or
+  deleting the model no longer flips the engine back to the cloud. Picking the local engine is a
+  decision about privacy, not a preference about quality, and it is not the app's to reverse —
+  even visibly. Without a model the dictation refuses at the start and says what is missing,
+  which is enough. (Matches the Windows port, which never did the flip.)
 
 ## [0.9.18] — 2026-08-22 — Text cleanup follows what was actually said
 
