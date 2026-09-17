@@ -722,6 +722,27 @@ if let i = CommandLine.arguments.firstIndex(of: "--print-prompt"),
     exit(0)
 }
 
+// ИИ-исправление терминов на заданном тексте с текущими настройками: печатает результат, модель,
+// которая его отдала, и время. Нужен, чтобы проверить отказы модели (снята / не разрешена) и
+// повтор в той же диктовке на живом Groq, — из интерфейса это видно только по итоговому тексту.
+if let i = CommandLine.arguments.firstIndex(of: "--post-process"),
+   i + 1 < CommandLine.arguments.count {
+    let text = CommandLine.arguments[i + 1]
+    FileHandle.standardError.write("· модель на старте: \(GroqClient.activeChatModel) (выбор: \(Prefs.chatModel))\n".data(using: .utf8)!)
+    let start = Date()
+    let done = DispatchSemaphore(value: 0)
+    GroqClient.postProcess(text: text) { result in
+        FileHandle.standardError.write(String(format: "· %.1f с, ответила: %@, резолв теперь: %@\n",
+                                              -start.timeIntervalSinceNow,
+                                              GroqClient.lastPostProcessModel ?? "—",
+                                              GroqClient.activeChatModel).data(using: .utf8)!)
+        print(result)
+        done.signal()
+    }
+    done.wait()
+    exit(0)
+}
+
 // Прогон нормализатора по файлу со строками: печатает только то, что изменилось.
 // Нужен, чтобы проверять правила на настоящей истории, а не на придуманных примерах —
 // ложное срабатывание на обычной речи иначе не поймать.

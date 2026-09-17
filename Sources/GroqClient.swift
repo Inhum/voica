@@ -212,17 +212,64 @@ enum GroqClient {
     /// Фоновое само-исцеление: если активная модель пропала из живого списка (или мы в auto),
     /// пересчитать резолв и закэшировать. Дёргается при 404 во время диктовки — следующая
     /// диктовка уже пойдёт на живую модель, релиз не нужен.
-    static func healChatModelInBackground() {
+    static func healChatModelInBackground() { healChatModel() }
+
+    /// То же, но с результатом: модель, на которую теперь пойдёт постобработка в режиме «auto».
+    /// nil — список не получили, выбирать не из чего, или выбор остался ручным (тогда повторять
+    /// запрос на другой модели нельзя — это подмена).
+    static func healChatModel(_ completion: ((String?) -> Void)? = nil) {
         fetchChatModels { live in
-            guard let live = live, !live.isEmpty, let pick = pickRecommended(from: live) else { return }
+            guard let live = live, !live.isEmpty, let pick = pickRecommended(from: live) else {
+                completion?(nil); return
+            }
             if Prefs.chatModel != "auto", !live.contains(Prefs.chatModel) {
                 Prefs.chatModel = "auto"          // ручной выбор протух → возвращаем к авто
             }
             if Prefs.chatModel == "auto" {
                 Prefs.resolvedChatModel = pick
+                completion?(pick)
+            } else {
+                completion?(nil)
             }
         }
     }
+
+    /// Отказ chat-модели, на который приложение реагирует (§6.1).
+    enum ChatRefusal: Equatable {
+        case retired   // модель снята: 404, или 400 с кодом model_decommissioned
+        case blocked   // 403: модель есть, организации не разрешена
+    }
+
+    /// Классифицирует ответ chat-эндпоинта.
+    /// ⚠️ Снятая модель — это ДВА ответа: `gemma2-9b-it` отвечает `400 model_decommissioned`, а
+    /// `qwen3.6-27b` и прочие — `404 model_not_found` (проверено 17.09.2026). 400 распознаётся ТОЛЬКО
+    /// по коду ошибки: голый 400 — это и наш собственный кривой запрос, лечить на него резолв нельзя.
+    static func chatRefusal(status: Int, body: Data?) -> ChatRefusal? {
+        switch status {
+        case 404: return .retired
+        case 403: return .blocked
+        case 400:
+            guard let body,
+                  let obj = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                  let error = obj["error"] as? [String: Any],
+                  (error["code"] as? String) == "model_decommissioned" else { return nil }
+            return .retired
+        default:
+            return nil
+        }
+    }
+
+    /// Повторять ли запрос в той же диктовке после отказа (§6.1): ровно одна попытка, только в
+    /// режиме «auto» и только на другой модели. Повтор на другой модели при ручном выборе — подмена.
+    static func shouldRetryChat(canRetry: Bool, failed: String, next: String?, mode: String) -> Bool {
+        guard canRetry, mode == "auto", let next, next != failed else { return false }
+        return true
+    }
+
+    /// Общий бюджет fail-open на всю постобработку: оба запроса и пересчёт резолва между ними.
+    /// ⚠️ Не у каждого запроса свой: Windows 0.9.0 спускался до 5 попыток по 20 с каждая — почти
+    /// две минуты ожидания диктовки в худшем случае.
+    static let postProcessBudget: TimeInterval = 20
 
     /// 403 — модель есть на платформе, но организации не разрешена. Само-исцеление по 404 тут
     /// не работает: модель жива, живой список её показывает, и «auto» будет возвращаться на неё
@@ -234,18 +281,23 @@ enum GroqClient {
     /// Сообщаем в любом случае (один раз на модель за сессию) и именно потому, что спустились:
     /// 403 чинится галочкой в консоли Groq за минуту, и молчание оставило бы человека на модели
     /// похуже без единого намёка, что лучшую можно вернуть.
-    static func handleChatModelBlocked(_ model: String) {
+    ///
+    /// completion — модель, на которую спустились (для повтора в той же диктовке); nil при ручном
+    /// выборе или если спускаться некуда.
+    static func handleChatModelBlocked(_ model: String, _ completion: ((String?) -> Void)? = nil) {
         Prefs.markChatModelBlocked(model, fingerprint: keyFingerprint)
         let notify = blockedNotified != model
         if notify { blockedNotified = model }
         guard Prefs.chatModel == "auto" else {
             if notify { DispatchQueue.main.async { onChatModelBlocked?(model, nil) } }
+            completion?(nil)
             return
         }
         fetchChatModels { live in
             let next = live.flatMap { pickRecommended(from: $0) }
             if let next { Prefs.resolvedChatModel = next }
             if notify { DispatchQueue.main.async { onChatModelBlocked?(model, next) } }
+            completion?(next)
         }
     }
 
@@ -303,55 +355,83 @@ enum GroqClient {
 
     /// Исправляет искажённые термины из словаря через Groq LLM (`activeChatModel`).
     /// Fail-open: при любой ошибке/таймауте возвращает исходный текст —
-    /// диктовка никогда не блокируется постобработкой. Если модель отдала 404 (Groq её
-    /// убрал) — запускаем фоновое само-исцеление, чтобы следующая диктовка пошла на живую.
+    /// диктовка никогда не блокируется постобработкой.
+    ///
+    /// Отказ модели (снята или не разрешена) не тупик и в этой диктовке: пересчитываем резолв и
+    /// повторяем запрос на новой модели — ровно один раз, только в режиме «auto», и всё вместе
+    /// укладывается в общий бюджет `postProcessBudget` (§6.1). Выдача — строго одна: либо ответ,
+    /// либо исходный текст по истечении бюджета, кто раньше.
     static func postProcess(text: String, completion: @escaping (String) -> Void) {
         guard let key = currentAPIKey(),
               let prompt = postProcessPrompt(text: text, vocabulary: Prefs.vocabulary) else {
             return completion(text)
         }
-        let payload: [String: Any] = [
-            "model": activeChatModel,
-            "temperature": 0,
-            "max_completion_tokens": 4096,
-            "messages": [["role": "user", "content": prompt]],
-        ]
-        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
-            return completion(text)
-        }
-        var req = URLRequest(url: chatEndpoint)
-        req.httpMethod = "POST"
-        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = body
-        req.timeoutInterval = 20
+        let deliver = OnceCompletion(completion)
+        let deadline = Date().addingTimeInterval(postProcessBudget)
+        DispatchQueue.global().asyncAfter(deadline: .now() + postProcessBudget) { deliver.call(text) }
 
-        HTTP.session.dataTask(with: req) { data, resp, err in
-            if let http = resp as? HTTPURLResponse, http.statusCode == 404 {
-                healChatModelInBackground()   // модель убрали — чиним к следующей диктовке
+        func attempt(_ model: String, canRetry: Bool) {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 1 else { return deliver.call(text) }
+            let payload: [String: Any] = [
+                "model": model,
+                "temperature": 0,
+                "max_completion_tokens": 4096,
+                "messages": [["role": "user", "content": prompt]],
+            ]
+            guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+                return deliver.call(text)
             }
-            if let http = resp as? HTTPURLResponse, http.statusCode == 403 {
-                handleChatModelBlocked(payload["model"] as? String ?? "")
-            }
-            guard err == nil,
-                  let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-                  let data = data,
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let choices = obj["choices"] as? [[String: Any]],
-                  let msg = choices.first?["message"] as? [String: Any],
-                  let content = msg["content"] as? String else {
-                return completion(text)   // fail-open
-            }
-            let cleaned = stripReasoning(content)
-            // Страховка к fail-open: исправление терминов подменяет отдельные слова, поэтому
-            // длина ответа не может радикально отличаться от исходной. Если модель всё-таки
-            // наговорила лишнего (или после вычистки не осталось ничего) — берём исходный текст.
-            guard !cleaned.isEmpty, cleaned.count <= text.count * 2 + 50 else {
-                return completion(text)
-            }
-            completion(cleaned)
-        }.resume()
+            var req = URLRequest(url: chatEndpoint)
+            req.httpMethod = "POST"
+            req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = body
+            req.timeoutInterval = remaining
+
+            HTTP.session.dataTask(with: req) { data, resp, err in
+                let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                if let refusal = chatRefusal(status: status, body: data) {
+                    // Пересчёт резолва нужен в любом случае — следующая диктовка должна пойти на
+                    // рабочую модель, даже если на повтор в этой бюджета уже не хватит.
+                    let retry: (String?) -> Void = { next in
+                        guard shouldRetryChat(canRetry: canRetry, failed: model, next: next,
+                                              mode: Prefs.chatModel), let next else {
+                            return deliver.call(text)
+                        }
+                        attempt(next, canRetry: false)
+                    }
+                    switch refusal {
+                    case .retired: healChatModel(retry)
+                    case .blocked: handleChatModelBlocked(model, retry)
+                    }
+                    return
+                }
+                guard err == nil, (200..<300).contains(status),
+                      let data = data,
+                      let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = obj["choices"] as? [[String: Any]],
+                      let msg = choices.first?["message"] as? [String: Any],
+                      let content = msg["content"] as? String else {
+                    return deliver.call(text)   // fail-open
+                }
+                let cleaned = stripReasoning(content)
+                // Страховка к fail-open: исправление терминов подменяет отдельные слова, поэтому
+                // длина ответа не может радикально отличаться от исходной. Если модель всё-таки
+                // наговорила лишнего (или после вычистки не осталось ничего) — берём исходный текст.
+                guard !cleaned.isEmpty, cleaned.count <= text.count * 2 + 50 else {
+                    return deliver.call(text)
+                }
+                lastPostProcessModel = model
+                deliver.call(cleaned)
+            }.resume()
+        }
+        attempt(activeChatModel, canRetry: true)
     }
+
+    /// Модель, которая отдала последнее успешное исправление. Только для диагностики
+    /// (`--post-process`): видно, сработал ли повтор.
+    static var lastPostProcessModel: String?
 
     /// Резолвит и проверяет chat-модель для ИИ-исправления, при необходимости само-исцеляясь.
     /// Порядок: тянем живой список → выбираем целевую (ручной выбор, если он ещё жив; иначе
@@ -433,13 +513,16 @@ enum GroqClient {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
         req.timeoutInterval = 15
-        HTTP.session.dataTask(with: req) { _, resp, err in
+        HTTP.session.dataTask(with: req) { data, resp, err in
             if let err = err { return completion(.error(HTTP.userMessage(err, url: chatEndpoint))) }
             guard let http = resp as? HTTPURLResponse else { return completion(.error(L("groq.validate.noResponse"))) }
+            switch chatRefusal(status: http.statusCode, body: data) {
+            case .blocked: return completion(.blocked(model))
+            case .retired: healChatModelInBackground(); return completion(.unavailable)
+            case nil: break
+            }
             switch http.statusCode {
             case 200:  completion(.available(model))
-            case 403:  completion(.blocked(model))
-            case 404:  healChatModelInBackground(); completion(.unavailable)
             case 401:  completion(.error(L("groq.validate.rejected")))
             default:   completion(.error(L("groq.validate.http", http.statusCode)))
             }
@@ -489,5 +572,17 @@ enum GroqClient {
 
         append("--\(boundary)--\r\n")
         return body
+    }
+}
+
+/// Завершение, которое срабатывает ровно один раз — из ответа сети или по истечении бюджета,
+/// кто первый. Второй и последующие вызовы молча игнорируются.
+final class OnceCompletion<T> {
+    private let lock = NSLock()
+    private var fn: ((T) -> Void)?
+    init(_ fn: @escaping (T) -> Void) { self.fn = fn }
+    func call(_ value: T) {
+        lock.lock(); let f = fn; fn = nil; lock.unlock()
+        f?(value)
     }
 }

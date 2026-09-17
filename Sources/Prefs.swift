@@ -33,7 +33,7 @@ enum Prefs {
     /// Модели chat-completions, которые Groq снял с раздачи (404). Сохранённый выбор такой
     /// модели считаем протухшим → откатываем на «auto», чтобы приложение подобрало живую.
     private static let retiredChatModels: Set<String> = ["qwen/qwen3-32b", "llama-3.3-70b-versatile",
-                                                        "qwen/qwen3.6-27b"]
+                                                        "qwen/qwen3.6-27b", "gemma2-9b-it"]
 
     /// Сколько дней хранить аудиозаписи. 0 = не удалять. По умолчанию 30.
     static var retentionDays: Int {

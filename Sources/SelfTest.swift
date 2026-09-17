@@ -593,6 +593,34 @@ enum SelfTest {
               GroqClient.pickRecommended(from: ["aaa-model", "zzz-model"],
                                          blocked: ["aaa-model"]) == "zzz-model")
 
+        // Снятая модель — это два ответа, и 400 узнаётся только по коду (§6.1).
+        let decommissioned = #"{"error":{"message":"The model `gemma2-9b-it` has been decommissioned","type":"invalid_request_error","code":"model_decommissioned"}}"#
+        let otherBadRequest = #"{"error":{"message":"bad","type":"invalid_request_error","code":"invalid_value"}}"#
+        check("refusal 404 → retired", GroqClient.chatRefusal(status: 404, body: nil) == .retired)
+        check("refusal 403 → blocked", GroqClient.chatRefusal(status: 403, body: nil) == .blocked)
+        check("refusal 400 decommissioned → retired",
+              GroqClient.chatRefusal(status: 400, body: Data(decommissioned.utf8)) == .retired)
+        check("refusal 400 other code → none",
+              GroqClient.chatRefusal(status: 400, body: Data(otherBadRequest.utf8)) == nil)
+        check("refusal 400 no body → none", GroqClient.chatRefusal(status: 400, body: nil) == nil)
+        check("refusal 400 garbage → none", GroqClient.chatRefusal(status: 400, body: Data("<html>".utf8)) == nil)
+        check("refusal 200 → none", GroqClient.chatRefusal(status: 200, body: nil) == nil)
+        check("refusal 500 → none", GroqClient.chatRefusal(status: 500, body: nil) == nil)
+
+        // Повтор в той же диктовке: одна попытка, только «auto», только на другой модели.
+        check("retry auto to next", GroqClient.shouldRetryChat(canRetry: true, failed: "a", next: "b", mode: "auto"))
+        check("no second retry", !GroqClient.shouldRetryChat(canRetry: false, failed: "a", next: "b", mode: "auto"))
+        check("no retry on manual choice", !GroqClient.shouldRetryChat(canRetry: true, failed: "a", next: "b", mode: "a"))
+        check("no retry without next", !GroqClient.shouldRetryChat(canRetry: true, failed: "a", next: nil, mode: "auto"))
+        check("no retry on same model", !GroqClient.shouldRetryChat(canRetry: true, failed: "a", next: "a", mode: "auto"))
+        check("post-process budget is one 20 s", GroqClient.postProcessBudget == 20)
+
+        // Выдача ровно одна — из ответа или по бюджету, кто первый.
+        var delivered: [String] = []
+        let once = OnceCompletion<String> { delivered.append($0) }
+        once.call("first"); once.call("second")
+        check("once completion fires once", delivered == ["first"])
+
         // Пометки 403 живут при своём ключе: у другой организации свои разрешения.
         let savedBlocked = UserDefaults.standard.stringArray(forKey: "blockedChatModels")
         let savedBlockedKey = UserDefaults.standard.string(forKey: "blockedChatModelsKey")
@@ -625,6 +653,10 @@ enum SelfTest {
         check("retired chat model migrates to auto", Prefs.chatModel == "auto")
         Prefs.chatModel = "llama-3.3-70b-versatile"   // снята Groq 16.08.2026
         check("llama-3.3 migrates to auto", Prefs.chatModel == "auto")
+        Prefs.chatModel = "gemma2-9b-it"   // отвечает 400 model_decommissioned, а не 404
+        check("gemma2 migrates to auto", Prefs.chatModel == "auto")
+        Prefs.chatModel = "qwen/qwen3.6-27b"   // выключена 14.09.2026, перенаправления нет
+        check("qwen3.6 migrates to auto", Prefs.chatModel == "auto")
         Prefs.chatModel = "llama-3.1-8b-instant"
         check("manual chatModel round-trip", Prefs.chatModel == "llama-3.1-8b-instant")
         check("activeChatModel honors manual", GroqClient.activeChatModel == "llama-3.1-8b-instant")

@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **A retired model no longer silently switches term correction off.** Groq does not always say
+  "not found" when it retires a model: some, like `gemma2-9b-it`, answer "decommissioned" instead,
+  and the app only healed itself on the first kind. An old manual choice of such a model left every
+  dictation uncorrected until Settings was opened. Both answers now count as a retired model, and
+  `gemma2-9b-it` joins the list of retired models the app migrates away from on its own.
+
+### Changed
+- **A refused model no longer costs the dictation its term correction.** When the model is retired
+  or not allowed for your organisation, the app used to fix its choice for the next dictation and
+  hand back this one uncorrected — right when you were waiting for it. It now retries once on the
+  model it switched to. The retry happens only in automatic mode, since trying another model would
+  replace a model you picked by hand, and the whole attempt stays within the same 20-second limit
+  as before, so a run of refusals never makes you wait longer.
+
 ## [0.9.19] — 2026-09-16 — Voica gets out through a corporate proxy, and steps around a model it isn't allowed to use
 
 ### Added
