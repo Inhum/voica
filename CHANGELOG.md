@@ -12,6 +12,9 @@ All notable changes to this project are documented here. The format is based on
   and the app only healed itself on the first kind. An old manual choice of such a model left every
   dictation uncorrected until Settings was opened. Both answers now count as a retired model, and
   `gemma2-9b-it` joins the list of retired models the app migrates away from on its own.
+- **The "model not enabled" notice now really comes once per model.** The app remembered only the
+  last model it had warned about, so when two models were refused in turn — say, a model picked by
+  hand and then the automatic one — the warning about the first came back again.
 
 ### Changed
 - **A refused model no longer costs the dictation its term correction.** When the model is retired

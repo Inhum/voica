@@ -615,6 +615,12 @@ enum SelfTest {
         check("no retry on same model", !GroqClient.shouldRetryChat(canRetry: true, failed: "a", next: "a", mode: "auto"))
         check("post-process budget is one 20 s", GroqClient.postProcessBudget == 20)
 
+        // Уведомление о запрете — один раз на модель, даже при чередовании отказов (§6.1).
+        let notified = NotifiedOnce()
+        check("notify first model", notified.first("a"))
+        check("notify second model", notified.first("b"))
+        check("no repeat after alternation", !notified.first("a"))
+
         // Выдача ровно одна — из ответа или по бюджету, кто первый.
         var delivered: [String] = []
         let once = OnceCompletion<String> { delivered.append($0) }

@@ -139,7 +139,10 @@ enum GroqClient {
     /// Ставит AppDelegate; аргументы — запрещённая модель и та, на которую спустились
     /// (nil, если спускаться некуда или выбор ручной). Не чаще раза на модель за сессию.
     static var onChatModelBlocked: ((String, String?) -> Void)?
-    private static var blockedNotified: String?
+    /// Модели, о запрете которых уже сообщили в этой сессии. Множество, а не последняя модель:
+    /// §6.1 обещает «один раз на модель за сессию», а при чередовании отказов (ручной выбор, потом
+    /// возврат к «auto») одна строка забывала первую модель и уведомление повторялось.
+    private static let blockedNotified = NotifiedOnce()
 
     /// Отпечаток текущего ключа: к нему привязаны пометки 403 (`Prefs.blockedChatModels`),
     /// чтобы запреты одной организации не наследовались другой. Сам ключ никуда не пишется.
@@ -286,8 +289,7 @@ enum GroqClient {
     /// выборе или если спускаться некуда.
     static func handleChatModelBlocked(_ model: String, _ completion: ((String?) -> Void)? = nil) {
         Prefs.markChatModelBlocked(model, fingerprint: keyFingerprint)
-        let notify = blockedNotified != model
-        if notify { blockedNotified = model }
+        let notify = blockedNotified.first(model)
         guard Prefs.chatModel == "auto" else {
             if notify { DispatchQueue.main.async { onChatModelBlocked?(model, nil) } }
             completion?(nil)
@@ -584,5 +586,16 @@ final class OnceCompletion<T> {
     func call(_ value: T) {
         lock.lock(); let f = fn; fn = nil; lock.unlock()
         f?(value)
+    }
+}
+
+/// «Впервые ли?» по ключу, потокобезопасно: отказы приходят из колбэков сети на разных потоках.
+final class NotifiedOnce {
+    private let lock = NSLock()
+    private var seen: Set<String> = []
+    /// true — ключ встретился впервые (и запомнен), false — уже был.
+    func first(_ key: String) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return seen.insert(key).inserted
     }
 }
