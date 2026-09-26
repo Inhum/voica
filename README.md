@@ -14,6 +14,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-black" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/chip-Apple%20Silicon-black" alt="Apple Silicon">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
   <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
   <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -117,6 +118,11 @@ back the work on [Boosty](https://boosty.to/voica): the road to 1.0 and the
 </p>
 
 ## Install
+
+**Requirements: a Mac with Apple Silicon (M1 or newer) and macOS 13 Ventura or later.**
+Intel Macs are not supported — the app is built for `arm64` only, and the offline engine runs
+on the Neural Engine, which Intel Macs don't have. On an Intel Mac macOS refuses to launch the
+app, and updating macOS does not help.
 
 1. Download `Voica-<version>.dmg` from [Releases](https://github.com/Inhum/voica/releases)
    (or build from source — see below).

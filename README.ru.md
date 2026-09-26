@@ -14,6 +14,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-macOS%2013%2B-black" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/chip-Apple%20Silicon-black" alt="Apple Silicon">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="Лицензия MIT">
   <img src="https://img.shields.io/badge/built%20with-Swift-orange" alt="Swift">
   <a href="https://deepwiki.com/Inhum/voica"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
@@ -117,6 +118,11 @@ Voica бесплатна и останется бесплатной — все �
 </p>
 
 ## Установка
+
+**Требования: Mac на Apple Silicon (M1 и новее) и macOS 13 Ventura или новее.**
+Маки на Intel не поддерживаются — приложение собрано только под `arm64`, а офлайн-движок
+работает на Neural Engine, которого у Intel-маков нет. На таком компьютере macOS откажется
+запускать приложение, и обновление системы не поможет.
 
 1. Скачайте `Voica-<версия>.dmg` со страницы [Releases](https://github.com/Inhum/voica/releases)
    (или соберите сами — см. ниже).
